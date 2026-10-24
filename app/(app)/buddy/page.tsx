@@ -2,12 +2,15 @@ import { db } from "@/lib/db";
 import { currentUser, viewDept } from "@/lib/profile";
 import { progress } from "@/lib/buddy/progress";
 import type { Report } from "@/lib/buddy/ai";
+import Link from "next/link";
+import { DocUpload } from "@/components/client";
 import { Card, Empty, PageTitle } from "@/components/ui";
 import { BuddySession } from "./session";
 
 export default async function Buddy() {
   const user = (await currentUser())!;
-  const courses = await db.course.findMany({ where: { department: viewDept(user), documents: { some: { kind: "lecture" } } }, orderBy: { code: "asc" } });
+  const allCourses = await db.course.findMany({ where: { department: viewDept(user) }, include: { documents: { select: { kind: true } } }, orderBy: { code: "asc" } });
+  const courses = allCourses.filter((c) => c.documents.some((d) => d.kind === "lecture"));
   const p = await progress(user.id);
   const codes = Object.fromEntries((await db.course.findMany({ select: { id: true, code: true } })).map((c) => [c.id, c.code]));
   const open = p.sessions.find((s) => !s.endedAt);
@@ -32,8 +35,15 @@ export default async function Buddy() {
           ))}
         </Stat>
       </div>
+      <Card className="mb-4">
+        {allCourses.length ? (
+          <DocUpload courses={allCourses.map((c) => ({ id: c.id, label: `${c.code} · ${c.title}` }))} kind="lecture" label="Add lecture notes to study from" />
+        ) : (
+          <p className="text-sm">Add a course in <Link className="text-accent underline" href="/examgraph">ExamGraph</Link> first.</p>
+        )}
+      </Card>
       {courses.length === 0 ? (
-        <Empty>Upload lecture notes from a course&apos;s ExamGraph page first.</Empty>
+        <Empty>Upload lecture notes above to start a session.</Empty>
       ) : (
         <BuddySession
           courses={courses.map((c) => ({ id: c.id, label: `${c.code} · ${c.title}` }))}

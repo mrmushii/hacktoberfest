@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
+import { MAX_UPLOAD_MB, tooBig, UPLOAD_ACCEPT } from "@/lib/docs/accept";
+import { withOcr } from "@/lib/ocr";
 
 export function Elapsed({ label = "Running on the local model" }: { label?: string }) {
   const [s, setS] = useState(0);
@@ -17,30 +19,48 @@ export function Elapsed({ label = "Running on the local model" }: { label?: stri
   );
 }
 
-/** Upload one course document (syllabus / lecture / paper) and refresh the page. */
-export function DocUpload({ courseId, kind, label }: { courseId: string; kind: string; label: string }) {
+/** Upload one course document (syllabus / lecture / paper) and refresh the page. Pass `courses` to let the student pick one. */
+export function DocUpload({ courseId, courses, kind, label }: { courseId?: string; courses?: { id: string; label: string }[]; kind: string; label: string }) {
   const router = useRouter();
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState("");
   const [msg, setMsg] = useState("");
   async function submit(form: FormData) {
-    setBusy(true);
     setMsg("");
-    form.set("courseId", courseId);
+    const file = form.get("file");
+    const big = file instanceof File ? tooBig(file) : "";
+    if (big) return setMsg(`⚠ ${big}`);
+    if (courseId) form.set("courseId", courseId);
     form.set("kind", kind);
-    const res = await fetch("/api/documents", { method: "POST", body: form });
-    const body = await res.json();
-    setBusy(false);
-    setMsg(res.ok ? (body.reused ? "Already analysed — reused stored result." : "Done.") : `⚠ ${body.error}`);
-    if (res.ok) router.refresh();
+    setBusy("Reading photo…");
+    await withOcr(form);
+    setBusy("Analysing…");
+    try {
+      const res = await fetch("/api/documents", { method: "POST", body: form });
+      const body = await res.json().catch(() => ({ error: `Server error (${res.status})` }));
+      setMsg(res.ok ? (body.reused ? "Already analysed — reused stored result." : "Done.") : `⚠ ${body.error}`);
+      if (res.ok) router.refresh();
+    } catch {
+      setMsg("⚠ Couldn't reach the server.");
+    } finally {
+      setBusy("");
+    }
   }
   return (
     <form action={submit} className="grid gap-2">
       <span className="label">{label}</span>
-      <input type="file" name="file" accept=".pdf,.txt" required className="text-xs" />
-      <button className="btn-ghost w-fit" disabled={busy}>
-        {busy && <Loader2 size={14} className="animate-spin" />} Upload & analyse
+      {!courseId && courses && (
+        <select name="courseId" className="input" required aria-label="Course">
+          {courses.map((c) => (
+            <option key={c.id} value={c.id}>{c.label}</option>
+          ))}
+        </select>
+      )}
+      <input type="file" name="file" accept={UPLOAD_ACCEPT} required className="text-xs" />
+      <p className="text-xs text-muted">PDF, Word, PowerPoint, text or a photo · up to {MAX_UPLOAD_MB} MB</p>
+      <button className="btn-ghost w-fit" disabled={Boolean(busy)}>
+        {busy && <Loader2 size={14} className="animate-spin" />} Upload &amp; analyse
       </button>
-      {busy && <Elapsed />}
+      {busy && <Elapsed label={busy.replace("…", "")} />}
       {msg && <p className="text-xs text-muted">{msg}</p>}
     </form>
   );

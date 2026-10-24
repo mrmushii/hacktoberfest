@@ -29,3 +29,16 @@ export async function ocrImage(file: File, progress?: (p: number) => void) {
     onProgress = null;
   }
 }
+
+/** For forms with an image file: read it in the browser and attach ocrText/ocrConfidence for the server. */
+export async function withOcr(form: FormData, progress?: (p: number) => void, field = "file") {
+  const file = form.get(field);
+  if (!(file instanceof File) || !file.type.startsWith("image/")) return;
+  try {
+    const ocr = await ocrImage(file, progress);
+    form.set("ocrText", ocr.text);
+    form.set("ocrConfidence", String(ocr.confidence));
+  } catch {
+    // Best effort: vision-capable models can still read the image itself.
+  }
+}

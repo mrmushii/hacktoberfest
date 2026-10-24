@@ -92,3 +92,14 @@ export async function archiveNotice(form: FormData) {
   await db.notice.update({ where: { id: String(form.get("id")) }, data: { status: "archived" } });
   revalidatePath("/", "layout");
 }
+
+/** Students add their own courses; the code is unique across the university, so an existing one is reused. */
+export async function addCourse(form: FormData) {
+  const u = await requireUser();
+  const code = String(form.get("code") ?? "").trim().toUpperCase().replace(/\s+/g, "-").slice(0, 20);
+  const title = String(form.get("title") ?? "").trim().slice(0, 120);
+  if (!/^[A-Z0-9-]{2,20}$/.test(code) || !title) return;
+  const course = await db.course.upsert({ where: { code }, update: {}, create: { code, title, department: u.department ?? "General", semester: u.semester ?? 1 } });
+  await db.enrollment.upsert({ where: { userId_courseId: { userId: u.id, courseId: course.id } }, update: {}, create: { userId: u.id, courseId: course.id } });
+  redirect(`/examgraph/${course.code}`);
+}

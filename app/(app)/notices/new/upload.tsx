@@ -8,7 +8,8 @@ import type { Match } from "@/lib/notices/match";
 import type { FieldChange } from "@/lib/notices/diff";
 import { AiBadge, Badge, Card } from "@/components/ui";
 import { Elapsed } from "@/components/client";
-import { ocrImage } from "@/lib/ocr";
+import { UPLOAD_ACCEPT } from "@/lib/docs/accept";
+import { withOcr } from "@/lib/ocr";
 
 type Analysis = {
   fields: NoticeFields;
@@ -50,13 +51,7 @@ export function NoticeUpload() {
     if (file instanceof File && file.size > 0 && file.type.startsWith("image/")) {
       setBusy("ocr");
       setOcrPct(0);
-      try {
-        const ocr = await ocrImage(file, (p) => setOcrPct(Math.round(p * 100)));
-        form.set("ocrText", ocr.text);
-        form.set("ocrConfidence", String(ocr.confidence));
-      } catch {
-        // OCR is best effort; the server still accepts the image for vision-capable models.
-      }
+      await withOcr(form, (p) => setOcrPct(Math.round(p * 100)));
     }
     setBusy("analyze");
     const res = await fetch("/api/notices/analyze", { method: "POST", body: form });
@@ -98,7 +93,7 @@ export function NoticeUpload() {
           <label className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border border-dashed border-line p-6 text-sm text-muted hover:border-accent">
             <Upload size={20} />
             <span>PDF, photo of a notice board (JPG/PNG) or .txt</span>
-            <input type="file" name="file" accept=".pdf,image/*,.txt" className="text-xs" />
+            <input type="file" name="file" accept={UPLOAD_ACCEPT} className="text-xs" />
           </label>
           <div>
             <span className="label">…or paste forwarded text</span>

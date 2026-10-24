@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react";
 import { Elapsed } from "@/components/client";
 import { AiBadge, Card } from "@/components/ui";
 import { Player } from "@/components/tutor/player";
+import { tooBig, UPLOAD_ACCEPT } from "@/lib/docs/accept";
 import { ocrImage } from "@/lib/ocr";
 import { DEMO_TEXT } from "@/lib/tutor/demo";
 import type { Lesson } from "@/lib/tutor/lesson";
@@ -13,7 +14,7 @@ type Out = { data: Lesson; cached: boolean; durationMs: number; model: string };
 
 export function TutorTool() {
   const [text, setText] = useState(DEMO_TEXT);
-  const [pdf, setPdf] = useState<File | null>(null);
+  const [doc, setDoc] = useState<File | null>(null);
   const [lang, setLang] = useState<"en" | "bn">("en");
   const [busy, setBusy] = useState("");
   const [err, setErr] = useState("");
@@ -23,7 +24,9 @@ export function TutorTool() {
   async function onFile(file: File | undefined) {
     setWarn("");
     if (!file) return;
-    if (file.type === "application/pdf") return setPdf(file);
+    const big = tooBig(file);
+    if (big) return setErr(big);
+    if (!file.type.startsWith("image/")) return setDoc(file);
     setBusy("Reading image…");
     try {
       const r = await ocrImage(file);
@@ -43,7 +46,7 @@ export function TutorTool() {
     const form = new FormData();
     form.set("text", text);
     form.set("lang", lang);
-    if (pdf) form.set("pdf", pdf);
+    if (doc) form.set("file", doc);
     try {
       const r = await fetch("/api/tutor", { method: "POST", body: form });
       const body = await r.json().catch(() => ({ error: `Server error (${r.status}). Try again.` }));
@@ -63,15 +66,15 @@ export function TutorTool() {
         <textarea id="problem" className="input min-h-20" value={text} onChange={(e) => setText(e.target.value)} />
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <label className="btn-ghost cursor-pointer">
-            Photo or PDF
-            <input type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => onFile(e.target.files?.[0])} />
+            Upload file
+            <input type="file" accept={UPLOAD_ACCEPT} className="hidden" onChange={(e) => onFile(e.target.files?.[0])} />
           </label>
-          {pdf && <span className="text-xs text-muted">{pdf.name} <button className="underline" onClick={() => setPdf(null)}>remove</button></span>}
+          {doc && <span className="text-xs text-muted">{doc.name} <button className="underline" onClick={() => setDoc(null)}>remove</button></span>}
           <select className="input w-auto" value={lang} onChange={(e) => setLang(e.target.value as "en" | "bn")} aria-label="Language">
             <option value="en">English</option>
             <option value="bn">বাংলা</option>
           </select>
-          <button className="btn-primary" disabled={Boolean(busy) || (!text.trim() && !pdf)} onClick={generate}>Teach me</button>
+          <button className="btn-primary" disabled={Boolean(busy) || (!text.trim() && !doc)} onClick={generate}>Teach me</button>
           {busy && (
             <span className="flex items-center gap-2 text-sm">
               <Loader2 size={14} className="animate-spin" /> {busy} <Elapsed />

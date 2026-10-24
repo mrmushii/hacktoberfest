@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { sha256 } from "@/lib/hash";
 import { extractQuestions, extractSyllabusTopics, mapToTopics, type Topic } from "@/lib/exam/analysis";
-import { pdfPages, type Upload } from "./pdf";
+import { uploadPages, type Upload } from "./pdf";
 
 export type DocKind = "syllabus" | "lecture" | "paper";
 
@@ -11,8 +11,8 @@ export async function ingestDocument(courseId: string, kind: DocKind, up: Upload
   const existing = await db.courseDocument.findFirst({ where: { courseId, contentHash } });
   if (existing) return { document: existing, reused: true };
 
-  const pages = up.kind === "pdf" ? await pdfPages(up.bytes) : up.kind === "text" ? (up.text ?? "").split("\f") : [];
-  if (!pages.some((p) => p.trim())) throw new Error("No text found. Upload a text PDF or .txt file.");
+  const pages = await uploadPages(up);
+  if (!pages.some((p) => p.trim())) throw new Error(up.kind === "pdf" ? "This PDF has no selectable text (scanned?). Upload photos of the pages instead." : "No text found in this file.");
 
   if (kind === "syllabus") {
     const { data } = await extractSyllabusTopics(pages);
