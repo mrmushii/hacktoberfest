@@ -7,13 +7,14 @@ import { DocUpload } from "@/components/client";
 import { Card, Empty, PageTitle } from "@/components/ui";
 import { BuddySession } from "./session";
 
-export default async function Buddy() {
+export default async function Buddy({ searchParams }: { searchParams: Promise<{ course?: string }> }) {
+  const { course: initialCourse } = await searchParams;
   const user = (await currentUser())!;
   const allCourses = await db.course.findMany({ where: { department: viewDept(user) }, include: { documents: { select: { kind: true } } }, orderBy: { code: "asc" } });
   const courses = allCourses.filter((c) => c.documents.some((d) => d.kind === "lecture"));
   const p = await progress(user.id);
   const codes = Object.fromEntries((await db.course.findMany({ select: { id: true, code: true } })).map((c) => [c.id, c.code]));
-  const open = p.sessions.find((s) => !s.endedAt);
+  const open = p.sessions.find((s) => !s.endedAt && s.mode === "study");
   const past = p.sessions.filter((s) => s.report).slice(0, 5);
 
   return (
@@ -46,6 +47,7 @@ export default async function Buddy() {
         <Empty>Upload lecture notes above to start a session.</Empty>
       ) : (
         <BuddySession
+          initialCourse={initialCourse}
           courses={courses.map((c) => ({ id: c.id, label: `${c.code} · ${c.title}` }))}
           resume={open ? { id: open.id, courseId: open.courseId, goals: JSON.parse(open.goals), startedAt: open.startedAt.toISOString(), mistakes: open.events.filter((e) => e.kind === "wrong" || e.kind === "stuck").map((e) => ({ kind: e.kind, topic: e.topic, detail: JSON.parse(e.detail) })) } : null}
         />

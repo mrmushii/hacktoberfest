@@ -2,15 +2,19 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ArrowUpRight, Play, Search } from "lucide-react";
+import { ArrowUpRight, Bell, CalendarClock, Flame, Play, Plus, Search, Target } from "lucide-react";
 import { CATEGORIES, TOOLS, filterTools, type Category, type Tool } from "@/lib/tools";
 import { TOOL_ICONS, ToolPreview } from "./tool-preview";
 
 export type TileData = { stat?: string; lines: string[] };
 
-const SPAN = { lg: "sm:col-span-2 sm:row-span-2", md: "sm:col-span-2", sm: "" };
+// Compact grid: tools come after "what to do now".
+const SPAN = { lg: "sm:col-span-2", md: "sm:col-span-2", sm: "" };
 
-export function Bento({ greeting, sub, live, courses, coursesLabel }: { greeting: string; sub: string; live: Record<string, TileData>; courses: { code: string; title: string; docs: number }[]; coursesLabel: string }) {
+type Today = { open: { code: string; done: number; total: number } | null; streak: number; minutesWeek: number; weak: string | null };
+type Next = { tasks: { title: string; due: string }[]; unread: number; change: string | null };
+
+export function Bento({ greeting, sub, live, courses, coursesLabel, today, next }: { greeting: string; sub: string; live: Record<string, TileData>; courses: { code: string; title: string; docs: number; weak: string | null }[]; coursesLabel: string; today: Today; next: Next }) {
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<Category | "All">("All");
   const tools = useMemo(() => filterTools(TOOLS, q, cat), [q, cat]);
@@ -18,12 +22,86 @@ export function Bento({ greeting, sub, live, courses, coursesLabel }: { greeting
 
   return (
     <>
-      <div className="mb-10">
-        <p className="text-sm font-medium text-muted">{sub}</p>
-        <h1 className="mt-3 text-4xl font-semibold tracking-tighter sm:text-6xl">{greeting}</h1>
-        <label className="relative mt-8 block max-w-xl">
-          <Search size={18} className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 text-muted" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search tools…" aria-label="Search tools" className="input rounded-full py-3.5 pl-12 text-base shadow-sm" />
+      <div className="mb-8 grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+        <div className="tile-glow rounded-3xl border border-line bg-panel p-6 sm:p-8">
+          <p className="text-sm font-medium text-muted">{sub}</p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tighter sm:text-5xl">{greeting}</h1>
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            {today.open ? (
+              <Link href="/buddy" className="btn-primary">
+                <Target size={16} /> Continue {today.open.code} session · {today.open.done}/{today.open.total} goals
+              </Link>
+            ) : (
+              <Link href="/buddy" className="btn-primary">
+                <Target size={16} /> Start today&apos;s study session
+              </Link>
+            )}
+            <Link href="/buddy" className="btn-ghost">Mock quiz</Link>
+            <Link href="/tutor" className="btn-ghost">Visual Tutor</Link>
+          </div>
+          <div className="mt-6 grid grid-cols-3 gap-3 text-sm">
+            <div className="rounded-2xl bg-subtle/70 p-3">
+              <div className="flex items-center gap-1 text-xs text-muted"><Flame size={14} /> Streak</div>
+              <div className="mt-1 text-xl font-semibold">{today.streak}d</div>
+            </div>
+            <div className="rounded-2xl bg-subtle/70 p-3">
+              <div className="text-xs text-muted">This week</div>
+              <div className="mt-1 text-xl font-semibold">{today.minutesWeek}m</div>
+            </div>
+            <div className="min-w-0 rounded-2xl bg-subtle/70 p-3">
+              <div className="text-xs text-muted">Needs work</div>
+              <div className="mt-1 truncate font-semibold" title={today.weak ?? ""}>{today.weak ?? "—"}</div>
+            </div>
+          </div>
+        </div>
+        <div className="grid content-start gap-3 rounded-3xl border border-line bg-panel p-6">
+          <h2 className="font-semibold">Next up</h2>
+          {next.tasks.length === 0 ? (
+            <p className="text-sm text-muted">Nothing due. <Link href="/planner" className="text-accent">Add a task</Link></p>
+          ) : (
+            next.tasks.map((t, i) => (
+              <Link key={i} href="/planner" className="flex items-center gap-2 text-sm hover:text-accent">
+                <CalendarClock size={14} className="shrink-0 text-muted" />
+                <span className="flex-1 truncate">{t.title}</span>
+                <span className="shrink-0 text-xs text-muted">{t.due}</span>
+              </Link>
+            ))
+          )}
+          <Link href="/notices" className="mt-2 flex items-start gap-2 rounded-2xl bg-subtle/70 p-3 text-sm hover:bg-subtle">
+            <Bell size={14} className="mt-0.5 shrink-0 text-muted" />
+            <span className="min-w-0">
+              <span className="font-medium">{next.unread ? `${next.unread} unread notice${next.unread > 1 ? "s" : ""}` : "Notices: all caught up"}</span>
+              {next.change && <span className="block truncate text-xs text-muted">{next.change}</span>}
+            </span>
+          </Link>
+        </div>
+      </div>
+
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-xl font-semibold tracking-tight">{coursesLabel}</h2>
+        <Link href="/courses" className="text-sm text-accent">Manage</Link>
+      </div>
+      <div className="mb-10 flex snap-x gap-3 overflow-x-auto pb-2">
+        {courses.map((c) => (
+          <Link key={c.code} href={`/courses/${c.code}`} className="w-60 shrink-0 snap-start rounded-3xl border border-line bg-panel p-5 transition hover:border-accent">
+            <div className="text-xs text-muted">{c.code}</div>
+            <div className="truncate font-medium">{c.title}</div>
+            <div className="mt-3 flex items-center gap-2 text-xs">
+              <span className="text-muted">{c.docs} files</span>
+              {c.weak && <span className="ml-auto truncate rounded-full bg-amber-500/15 px-2 py-0.5 text-amber-700" title={`Needs work: ${c.weak}`}>{c.weak}</span>}
+            </div>
+          </Link>
+        ))}
+        <Link href="/courses" className="grid w-48 shrink-0 snap-start place-items-center rounded-3xl border border-dashed border-line p-5 text-sm text-muted hover:border-accent hover:text-accent">
+          <span className="flex items-center gap-1"><Plus size={16} /> Add course</span>
+        </Link>
+      </div>
+
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <h2 className="mr-auto text-xl font-semibold tracking-tight">Tools</h2>
+        <label className="relative block w-full max-w-xs">
+          <Search size={16} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search tools…" aria-label="Search tools" className="input rounded-full py-2 pl-10" />
         </label>
       </div>
       <div className="mb-6 flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Filter tools">
@@ -42,12 +120,12 @@ export function Bento({ greeting, sub, live, courses, coursesLabel }: { greeting
           </button>
         </div>
       ) : (
-        <div className="tiles grid auto-rows-[minmax(190px,auto)] grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="tiles grid auto-rows-[minmax(170px,auto)] grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {tools.map((t) => {
             const Icon = TOOL_ICONS[t.id];
             const data = live[t.id];
             return (
-              <div key={t.id} className={`tile group relative flex flex-col overflow-hidden rounded-3xl border border-line bg-panel p-6 ${SPAN[t.size]} ${t.size === "lg" ? "tile-glow" : ""}`}>
+              <div key={t.id} className={`tile group relative flex flex-col overflow-hidden rounded-3xl border border-line bg-panel p-6 ${SPAN[t.size]} `}>
                 {/* whole tile opens the preview; the arrow goes straight to the tool */}
                 <button onClick={() => setPreview({ tool: t, play: false })} aria-label={`Preview ${t.title}`} className="absolute inset-0 rounded-3xl focus-visible:outline-none" />
                 <div className="pointer-events-none relative flex items-start justify-between">
@@ -67,7 +145,7 @@ export function Bento({ greeting, sub, live, courses, coursesLabel }: { greeting
                 <div className="pointer-events-none relative mt-auto grid pt-6">
                   <div className={`tile-face col-start-1 row-start-1 ${t.href ? "" : "opacity-60"}`}>
                     <div className="text-xs font-medium uppercase tracking-wide text-muted">{t.category}</div>
-                    <div className={`mt-1 font-semibold tracking-tight ${t.size === "lg" ? "text-2xl sm:text-3xl" : "text-lg"}`}>{t.title}</div>
+                    <div className={`mt-1 font-semibold tracking-tight text-lg`}>{t.title}</div>
                     <p className="mt-1 text-sm text-muted">{t.description}</p>
                     {data && (
                       <div className={`mt-5 rounded-2xl bg-subtle/70 p-4 text-sm ${t.size === "sm" ? "hidden" : ""}`}>
@@ -81,7 +159,7 @@ export function Bento({ greeting, sub, live, courses, coursesLabel }: { greeting
                     )}
                   </div>
                   <div className="tile-more col-start-1 row-start-1 self-end" aria-hidden>
-                    <div className={`font-semibold tracking-tight ${t.size === "lg" ? "text-2xl" : "text-base"}`}>{t.title}</div>
+                    <div className={`font-semibold tracking-tight text-base`}>{t.title}</div>
                     <p className={`mt-1 ${t.size === "sm" ? "text-sm" : "text-base"}`}>{t.purpose}</p>
                     {t.size !== "sm" && (
                       <ol className="mt-4 grid gap-2 text-sm text-muted">
@@ -110,26 +188,6 @@ export function Bento({ greeting, sub, live, courses, coursesLabel }: { greeting
 
       <ToolPreview tool={preview?.tool ?? null} autoplay={preview?.play} onClose={() => setPreview(null)} />
 
-      <h2 className="mb-4 mt-16 text-2xl font-semibold tracking-tight">{coursesLabel}</h2>
-      {courses.length === 0 ? (
-        <p className="text-sm text-muted">
-          No courses yet. <Link href="/profile" className="text-accent">Add courses in your profile</Link>.
-        </p>
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {courses.map((c) => (
-            <div key={c.code} className="rounded-3xl border border-line bg-panel p-5 transition hover:shadow-lg">
-              <div className="text-xs text-muted">{c.code}</div>
-              <div className="font-medium">{c.title}</div>
-              <div className="mt-4 flex items-center gap-2 text-xs">
-                <Link href={`/examgraph/${c.code}`} className="rounded-full border border-line px-3 py-1.5 font-medium hover:bg-subtle">ExamGraph</Link>
-                <Link href={`/study?course=${c.code}`} className="rounded-full border border-line px-3 py-1.5 font-medium hover:bg-subtle">Study</Link>
-                <span className="ml-auto text-muted">{c.docs} docs</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
     </>
   );
 }

@@ -104,7 +104,7 @@ async function main() {
       await timed(`buddy goals ${c.code}`, () => suggestGoals(ayesha.id, c.id));
       await timed(`buddy mock exam ${c.code}`, () => mockExam(ayesha.id, c.id));
     }
-    await timed("tutor demo lesson", () => buildLesson(DEMO_TEXT, "en"));
+    await timed("tutor demo lesson", () => buildLesson(DEMO_TEXT));
     console.log("Pre-warming revised notices (not published)…");
     for (const f of (await readdir(join(SAMPLES, "revised"))).sort()) {
       await timed(f, async () => analyzeNotice(await load(join(SAMPLES, "revised", f))));

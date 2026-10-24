@@ -32,3 +32,17 @@ it("streak counts back from today, or from yesterday if not studied yet today", 
 it("grade marks unanswered as wrong", () => {
   expect(grade([{ answer: 1 }, { answer: 2 }, { answer: 0 }], [1, 3, null])).toEqual([true, false, false]);
 });
+
+it("topicBreakdown groups mock results per topic, weakest first", async () => {
+  const { topicBreakdown } = await import("./progress");
+  const qs = [{ topic: "Heaps" }, { topic: "Graphs" }, { topic: "Heaps" }, { topic: "Graphs" }];
+  expect(topicBreakdown(qs, [true, false, false, false])).toEqual([
+    { topic: "Graphs", right: 0, total: 2 },
+    { topic: "Heaps", right: 1, total: 2 },
+  ]);
+});
+
+it("voiceConfusions skips the model when the student never spoke", async () => {
+  const { voiceConfusions } = await import("./ai");
+  expect(await voiceConfusions("any", [{ role: "assistant", text: "Hey! What are you stuck on?" }])).toEqual([]);
+});

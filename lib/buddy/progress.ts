@@ -48,3 +48,15 @@ export async function progress(userId: string, courseId?: string) {
     weak: weakTopics(events).slice(0, 5),
   };
 }
+
+/** Mock quiz results per topic, weakest first. */
+export function topicBreakdown(questions: { topic: string }[], marks: boolean[]) {
+  const m = new Map<string, { topic: string; right: number; total: number }>();
+  questions.forEach((q, i) => {
+    const r = m.get(q.topic) ?? { topic: q.topic, right: 0, total: 0 };
+    r.total++;
+    if (marks[i]) r.right++;
+    m.set(q.topic, r);
+  });
+  return [...m.values()].sort((a, b) => a.right / a.total - b.right / b.total || b.total - a.total);
+}

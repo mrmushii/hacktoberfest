@@ -162,6 +162,7 @@ model StudySession {
   userId    String
   user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   courseId  String
+  mode      String         @default("study") // study | mock
   goals     String         // JSON {text, topic, done}[]
   startedAt DateTime       @default(now())
   endedAt   DateTime?

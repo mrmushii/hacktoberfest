@@ -39,7 +39,8 @@ export function toElements(state: TreeState): ExcalidrawElementSkeleton[] {
       if (!c) continue;
       const a = pos.get(n.key)!;
       const b = pos.get(c.key)!;
-      arrows.push({ type: "arrow", id: `e${n.key}-${c.key}`, x: a.x + R / 2, y: a.y + R, points: [[0, 0], [b.x - a.x, b.y - a.y - R]], start: { id: `n${n.key}` }, end: { id: `n${c.key}` } });
+      const lit = state.highlight.includes(n.key) && state.highlight.includes(c.key);
+      arrows.push({ type: "arrow", id: `e${n.key}-${c.key}`, ...(lit ? { strokeColor: HIGHLIGHT, strokeWidth: 3 } : {}), x: a.x + R / 2, y: a.y + R, points: [[0, 0], [b.x - a.x, b.y - a.y - R]], start: { id: `n${n.key}` }, end: { id: `n${c.key}` } });
       edges(c);
     }
   };

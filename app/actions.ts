@@ -101,5 +101,22 @@ export async function addCourse(form: FormData) {
   if (!/^[A-Z0-9-]{2,20}$/.test(code) || !title) return;
   const course = await db.course.upsert({ where: { code }, update: {}, create: { code, title, department: u.department ?? "General", semester: u.semester ?? 1 } });
   await db.enrollment.upsert({ where: { userId_courseId: { userId: u.id, courseId: course.id } }, update: {}, create: { userId: u.id, courseId: course.id } });
-  redirect(`/examgraph/${course.code}`);
+  redirect(`/courses/${course.code}`);
+}
+
+export async function leaveCourse(form: FormData) {
+  const u = await requireUser();
+  await db.enrollment.deleteMany({ where: { userId: u.id, courseId: String(form.get("courseId")) } });
+  revalidatePath("/", "layout");
+  redirect("/courses");
+}
+
+/** Only students enrolled in the course may remove its documents. */
+export async function deleteDocument(form: FormData) {
+  const u = await requireUser();
+  const id = String(form.get("id"));
+  const doc = await db.courseDocument.findFirst({ where: { id, course: { enrollments: { some: { userId: u.id } } } } });
+  if (!doc) return;
+  await db.courseDocument.delete({ where: { id } });
+  revalidatePath("/", "layout");
 }

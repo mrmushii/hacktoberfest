@@ -2,7 +2,7 @@ import JSZip from "jszip";
 import { expect, it } from "vitest";
 import { readUpload, uploadPages } from "./pdf";
 
-const file = async (name: string, zip: JSZip) => new File([await zip.generateAsync({ type: "uint8array" })], name);
+const file = async (name: string, zip: JSZip) => new File([await zip.generateAsync({ type: "arraybuffer" })], name);
 
 it("reads a .pptx as one page per slide, in slide order, with notes", async () => {
   const z = new JSZip();

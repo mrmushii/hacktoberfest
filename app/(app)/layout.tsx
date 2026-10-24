@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Bell, GraduationCap } from "lucide-react";
+import { Bell, BookMarked, GraduationCap } from "lucide-react";
 import { db } from "@/lib/db";
 import { currentUser, viewDept } from "@/lib/profile";
 import { aiStatus } from "@/lib/ai/client";
@@ -31,6 +31,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <div className="mx-auto flex max-w-6xl items-center gap-2 rounded-full border border-line bg-panel/70 py-1.5 pl-4 pr-1.5 shadow-sm backdrop-blur-xl">
           <Link href="/" className="mr-auto flex items-center gap-2 font-semibold tracking-tight">
             <GraduationCap size={20} className="text-accent" /> UniHub
+          </Link>
+          <Link href="/courses" className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium hover:bg-subtle">
+            <BookMarked size={16} /> Courses
           </Link>
           <Link href="/status" className="hidden items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-muted hover:bg-subtle sm:flex">
             <span className={`h-2 w-2 rounded-full ${status ? "bg-emerald-500" : "bg-red-500"}`} />

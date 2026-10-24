@@ -169,3 +169,8 @@ dialog.preview[open]::backdrop { background: rgb(0 0 0 / 0.4); backdrop-filter: 
   .no-print { display: none !important; }
   body { background: white; }
 }
+
+@keyframes fadein {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}

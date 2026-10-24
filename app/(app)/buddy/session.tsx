@@ -8,7 +8,9 @@ import { Quiz } from "@/components/quiz";
 import { AiBadge, Card } from "@/components/ui";
 import type { Goal, Report } from "@/lib/buddy/ai";
 import type { Mcq } from "@/lib/buddy/material";
-import { speak } from "@/lib/tutor/voice";
+import { VoiceOrb } from "@/components/voice-orb";
+import { speak, type Line } from "@/lib/voice";
+import { MockRunner, MockSetup } from "./mock";
 
 type Course = { id: string; label: string };
 type Mistake = { kind: string; topic: string | null; detail: { question?: string } };
@@ -23,9 +25,10 @@ async function call<T>(body: object): Promise<T> {
   return j as T;
 }
 
-export function BuddySession({ courses, resume }: { courses: Course[]; resume: Resume | null }) {
+export function BuddySession({ courses, resume, initialCourse }: { courses: Course[]; resume: Resume | null; initialCourse?: string }) {
   const router = useRouter();
-  const [courseId, setCourseId] = useState(resume?.courseId ?? courses[0].id);
+  const [courseId, setCourseId] = useState(resume?.courseId ?? (courses.some((c) => c.id === initialCourse) ? initialCourse! : courses[0].id));
+  const [mode, setMode] = useState<"study" | "mock">("study");
   const [sessionId, setSessionId] = useState(resume?.id ?? "");
   const [startedAt, setStartedAt] = useState(resume?.startedAt ?? "");
   const [goals, setGoals] = useState<Goal[]>(resume?.goals ?? []);
@@ -36,7 +39,7 @@ export function BuddySession({ courses, resume }: { courses: Course[]; resume: R
   const [help, setHelp] = useState<Ai<Explained> | null>(null);
   const [quiz, setQuiz] = useState<{ topic: string; questions: Mcq[] } | null>(null);
   const [report, setReport] = useState<Report | null>(null);
-  const [mock, setMock] = useState<{ questions: Mcq[]; answers: (number | null)[]; result?: { marks: boolean[]; score: number; total: number } } | null>(null);
+  const [mock, setMock] = useState(false);
   const phase = report ? "wrap" : sessionId ? "study" : "plan";
 
   async function run<T>(label: string, fn: () => Promise<T>) {
@@ -64,8 +67,26 @@ export function BuddySession({ courses, resume }: { courses: Course[]; resume: R
     call({ action: "answer", sessionId, topic, correct, detail: { question: q.question, chosen, answer: q.answer } }).catch(() => {});
   };
 
+  const tabs = (
+    <div className="mb-4 inline-flex rounded-full border border-line p-1" role="tablist">
+      {(["study", "mock"] as const).map((m) => (
+        <button key={m} role="tab" aria-selected={mode === m} onClick={() => setMode(m)} className={`rounded-full px-4 py-1.5 text-sm font-medium ${mode === m ? "bg-ink text-bg" : "text-muted"}`}>
+          {m === "study" ? "Study session" : "Mock quiz"}
+        </button>
+      ))}
+    </div>
+  );
+  if (phase === "plan" && mode === "mock")
+    return (
+      <div>
+        {tabs}
+        <MockSetup courses={courses} courseId={courseId} />
+      </div>
+    );
   if (phase === "plan")
     return (
+      <div>
+      {tabs}
       <Card>
         <div className="flex flex-wrap items-end gap-3">
           <label className="min-w-60 flex-1">
@@ -95,6 +116,7 @@ export function BuddySession({ courses, resume }: { courses: Course[]; resume: R
         )}
         <Status busy={busy} err={err} />
       </Card>
+      </div>
     );
 
   if (phase === "wrap" && report)
@@ -111,40 +133,15 @@ export function BuddySession({ courses, resume }: { courses: Course[]; resume: R
             <List title="Went well" items={report.strengths} />
             <List title="Review next" items={[...report.weak.map((w) => `${w.topic} (${w.misses} miss${w.misses === 1 ? "" : "es"})`), ...report.review]} />
           </div>
+          {report.voice.length > 0 && <div className="mt-3 text-sm"><List title="From your voice chat" items={report.voice} /></div>}
           <p className="mt-3 text-sm"><b>Tomorrow:</b> {report.tomorrow}</p>
           <div className="mt-4 flex gap-2">
-            {!mock && <button className="btn-primary" disabled={Boolean(busy)} onClick={() => run("Writing your mock exam…", async () => { const r = await call<Ai<{ questions: Mcq[] }>>({ action: "mock", sessionId }); setMock({ questions: r.data.questions, answers: r.data.questions.map(() => null) }); })}>Take a mock exam</button>}
+            {!mock && <button className="btn-primary" onClick={() => setMock(true)}>Take a mock exam</button>}
             <button className="btn-ghost" onClick={() => router.refresh()}>Done</button>
           </div>
           <Status busy={busy} err={err} />
         </Card>
-        {mock && (
-          <Card>
-            <h2 className="mb-3 font-semibold">Mock exam {mock.result && `· ${mock.result.score}/${mock.result.total}`}</h2>
-            <ol className="list-decimal space-y-4 pl-5 text-sm">
-              {mock.questions.map((q, i) => (
-                <li key={i}>
-                  <p className="font-medium">{q.question}</p>
-                  <div className="mt-2 grid gap-1.5">
-                    {q.options.map((o, j) => {
-                      const chosen = mock.answers[i] === j;
-                      const tone = mock.result ? (j === q.answer ? "border-emerald-500 bg-emerald-500/10" : chosen ? "border-red-500 bg-red-500/10" : "") : chosen ? "border-accent bg-accent/10" : "";
-                      return (
-                        <button key={j} disabled={Boolean(mock.result)} onClick={() => setMock({ ...mock, answers: mock.answers.map((a, k) => (k === i ? j : a)) })} className={`rounded-lg border border-line px-3 py-1.5 text-left ${tone}`}>{o}</button>
-                      );
-                    })}
-                  </div>
-                  {mock.result && <p className="mt-2 text-xs text-muted">{q.explanation}</p>}
-                </li>
-              ))}
-            </ol>
-            {!mock.result && (
-              <button className="btn-primary mt-4" disabled={Boolean(busy)} onClick={() => run("Marking…", async () => setMock({ ...mock, result: await call({ action: "mockSubmit", sessionId, questions: mock.questions, answers: mock.answers }) }))}>
-                Submit ({mock.answers.filter((a) => a !== null).length}/{mock.questions.length} answered)
-              </button>
-            )}
-          </Card>
-        )}
+        {mock && <MockRunner sessionId={sessionId} />}
       </div>
     );
 
@@ -163,7 +160,7 @@ export function BuddySession({ courses, resume }: { courses: Course[]; resume: R
           <Card>
             <div className="mb-2 flex items-center justify-between gap-2">
               <AiBadge ai={help} />
-              <button className="btn-ghost" onClick={() => speak(`${help.data.explanation} ${help.data.steps.join(" ")}`, "en")} aria-label="Read explanation aloud"><Volume2 size={16} /></button>
+              <button className="btn-ghost" onClick={() => speak(`${help.data.explanation} ${help.data.steps.join(" ")}`)} aria-label="Read explanation aloud"><Volume2 size={16} /></button>
             </div>
             {!help.data.covered && <p className="mb-2 text-sm text-amber-600">Your lecture notes don&apos;t fully cover this.</p>}
             <p className="text-sm">{help.data.explanation}</p>
@@ -181,6 +178,7 @@ export function BuddySession({ courses, resume }: { courses: Course[]; resume: R
         )}
       </div>
       <div className="grid content-start gap-4">
+        <VoiceCard sessionId={sessionId} onConfusions={(c) => setMistakes((m) => [...m, ...c.map((x) => ({ kind: "stuck", topic: x.topic, detail: { question: `🎙 ${x.question}${x.resolved ? " (resolved)" : ""}` } }))])} />
         <Card>
           <div className="flex items-center justify-between">
             <h2 className="font-semibold">Today&apos;s goals</h2>
@@ -220,6 +218,33 @@ export function BuddySession({ courses, resume }: { courses: Course[]; resume: R
         </Card>
       </div>
     </div>
+  );
+}
+
+/** Talk it through with the buddy; when the call ends, confusions are pulled from the transcript and logged. */
+function VoiceCard({ sessionId, onConfusions }: { sessionId: string; onConfusions: (c: { topic: string; question: string; resolved: boolean }[]) => void }) {
+  const [note, setNote] = useState("");
+  return (
+    <Card>
+      <VoiceOrb
+        label="Talk to your buddy"
+        prompt={async () => {
+          const { context } = await call<{ context: string }>({ action: "voiceContext", sessionId });
+          return {
+            system: `You are a warm, patient study buddy on a voice call with a university student. Your job is to find out what confuses them and clear it up. Ask what they're stuck on, explain step by step in short spoken sentences (no lists or symbols), use an example, then ask a quick question to check they understood. Stay grounded in this context; if it's not covered, say so.\n\n${context}`,
+            firstMessage: "Hey! What are you stuck on right now?",
+          };
+        }}
+        onEnd={(lines: Line[]) => {
+          setNote("Saving what you were confused about…");
+          call<{ confusions: { topic: string; question: string; resolved: boolean }[] }>({ action: "voiceLog", sessionId, lines }).then(
+            (r) => (onConfusions(r.confusions), setNote(r.confusions.length ? `Logged ${r.confusions.length} confusion${r.confusions.length > 1 ? "s" : ""} from the chat.` : "")),
+            () => setNote("Couldn't save the chat notes."),
+          );
+        }}
+      />
+      {note && <p className="mt-2 text-xs text-muted">{note}</p>}
+    </Card>
   );
 }
 

@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { currentUser, viewDept } from "@/lib/profile";
-import { addCourse } from "@/app/actions";
 import { Card, PageTitle } from "@/components/ui";
 
 export default async function ExamGraphHome({ searchParams }: { searchParams: Promise<{ all?: string }> }) {
@@ -19,20 +18,9 @@ export default async function ExamGraphHome({ searchParams }: { searchParams: Pr
           </Link>
         }
       />
-      <Card className="mb-4">
-        <form action={addCourse} className="flex flex-wrap items-end gap-3">
-          <label className="w-36">
-            <span className="label">Course code</span>
-            <input name="code" className="input" placeholder="CSE-301" required pattern="[A-Za-z0-9 -]{2,20}" />
-          </label>
-          <label className="min-w-60 flex-1">
-            <span className="label">Course title</span>
-            <input name="title" className="input" placeholder="Data Structures" required maxLength={120} />
-          </label>
-          <button className="btn-primary">Add course</button>
-        </form>
-        <p className="mt-2 text-xs text-muted">Then upload its syllabus, past papers and lecture notes: PDF, Word, PowerPoint, text or photos.</p>
-      </Card>
+      <p className="mb-4 text-sm text-muted">
+        Missing a course? <Link href="/courses" className="text-accent underline">Add it in Courses</Link> and upload its files there.
+      </p>
       {courses.length === 0 && <p className="text-sm text-muted">No {dept} courses yet.</p>}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {courses.map((c) => (
