@@ -1,0 +1,12 @@
+CSE-301 DATA STRUCTURES — FINAL EXAMINATION 2024
+Full marks: 60
+
+1. (a) Implement a queue using two stacks. [5]
+   (b) Prove that binary search runs in O(log n). [5]
+2. (a) Insert 15, 10, 20, 8, 12, 25 into a BST and find the inorder successor of 10. [5]
+   (b) Show AVL rotations after inserting 3, 2, 1, 4, 5. [5]3. (a) Explain open addressing with quadratic probing. [5]
+   (b) Compare merge sort and quicksort in the worst case. [5]
+4. (a) Run DFS on the given graph and classify the edges. [5]
+   (b) Apply Dijkstra's algorithm and show the distance table. [5]
+5. (a) Explain Prim's algorithm for minimum spanning trees. [5]
+   (b) Level-order traversal of a binary tree using a queue. [5]

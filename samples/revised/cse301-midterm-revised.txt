@@ -1,0 +1,14 @@
+DEPARTMENT OF COMPUTER SCIENCE AND ENGINEERING
+Notice No. CSE/2026/131                                  Date: 22 October 2026
+
+REVISED: MIDTERM EXAMINATION — CSE-301 DATA STRUCTURES
+
+In supersession of Notice No. CSE/2026/114, the Midterm Examination of CSE-301
+(Data Structures) for Semester 5, Sections A and B, has been rescheduled to
+15 November 2026 at 10:00 AM. The exam will now take place in Room 501,
+Academic Building 2, due to renovation work.
+
+Students must bring their university ID cards. Calculators are not permitted.
+Syllabus: Lectures 1–8 (Arrays to Binary Search Trees).
+
+Chairman, Department of CSE

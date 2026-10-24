@@ -1,103 +1,66 @@
-import Image from "next/image";
+import Link from "next/link";
+import { db } from "@/lib/db";
+import { currentUser, fmtDue } from "@/lib/profile";
+import { Badge, Card, Empty, PageTitle } from "@/components/ui";
 
-export default function Home() {
+export default async function Dashboard() {
+  const user = await currentUser();
+  if (!user) return <Empty>No data yet. Run <code>npm run reset</code> to load demo data.</Empty>;
+  const [tasks, notes, courses] = await Promise.all([
+    db.task.findMany({ where: { userId: user.id, done: false }, orderBy: { due: "asc" }, take: 5 }),
+    db.notification.findMany({ where: { userId: user.id }, orderBy: { createdAt: "desc" }, take: 5 }),
+    db.course.findMany({ where: { department: user.department, semester: user.semester }, include: { _count: { select: { documents: true } } } }),
+  ]);
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+    <>
+      <PageTitle title={`Hi, ${user.name.split(" ")[0]}`} sub={`${user.department} · Semester ${user.semester} · Section ${user.section}`} />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <div className="mb-3 flex items-center justify-between">
+            <span className="font-medium">Upcoming</span>
+            <Link href="/planner" className="text-xs text-accent">Planner →</Link>
+          </div>
+          {tasks.length === 0 && <p className="text-sm text-muted">Nothing scheduled.</p>}
+          <ul className="space-y-2 text-sm">
+            {tasks.map((t) => (
+              <li key={t.id} className="flex justify-between gap-3">
+                <span>{t.title}</span>
+                <span className="shrink-0 text-muted">{fmtDue(t.due)}</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+        <Card>
+          <div className="mb-3 flex items-center justify-between">
+            <span className="font-medium">Recent notices for you</span>
+            <Link href="/notices" className="text-xs text-accent">Notice Board →</Link>
+          </div>
+          {notes.length === 0 && <p className="text-sm text-muted">No notifications.</p>}
+          <ul className="space-y-2 text-sm">
+            {notes.map((n) => (
+              <li key={n.id}>
+                <Link href={`/notices/${n.noticeId}`} className="hover:text-accent">
+                  {!n.read && <Badge tone="blue">new</Badge>} {n.message}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      </div>
+      <h2 className="mb-3 mt-8 font-medium">My courses</h2>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {courses.map((c) => (
+          <Card key={c.id}>
+            <div className="text-xs text-muted">{c.code}</div>
+            <div className="font-medium">{c.title}</div>
+            <div className="mt-3 flex gap-3 text-xs">
+              <Link href={`/examgraph/${c.code}`} className="text-accent">ExamGraph</Link>
+              <Link href={`/study?course=${c.code}`} className="text-accent">Study</Link>
+              <span className="text-muted">{c._count.documents} docs</span>
+            </div>
+          </Card>
+        ))}
+      </div>
+    </>
   );
 }

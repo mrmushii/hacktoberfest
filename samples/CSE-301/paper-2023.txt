@@ -1,0 +1,12 @@
+CSE-301 DATA STRUCTURES — FINAL EXAMINATION 2023
+Full marks: 60
+
+1. (a) Find the time complexity of a nested loop where the inner loop doubles. [5]
+   (b) Reverse a singly linked list in place; give the algorithm. [5]
+2. (a) Perform preorder, inorder and postorder traversals on the given binary tree. [6]
+   (b) Insert 10, 20, 30 into an AVL tree and show the rotations. [4]3. (a) Build a max-heap from 4, 10, 3, 5, 1 and show heap sort steps. [6]
+   (b) Explain the priority queue operations using a heap. [4]
+4. (a) Trace merge sort on 38, 27, 43, 3, 9, 82, 10. [5]
+   (b) What is a good hash function? Explain load factor. [5]
+5. (a) Represent the given graph using an adjacency list and adjacency matrix. [4]
+   (b) Find the minimum spanning tree using Kruskal's algorithm. [6]

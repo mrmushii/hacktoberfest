@@ -1,0 +1,22 @@
+CSE-301 DATA STRUCTURES — COURSE SYLLABUS (Semester 5)
+
+Module 1: Foundations
+- Asymptotic Analysis (Big-O, Omega, Theta)
+- Arrays and Linked Lists
+- Stacks and Queues
+
+Module 2: Trees
+- Binary Trees and Traversals
+- Binary Search Trees
+- AVL Trees
+- Heaps and Priority Queues
+
+Module 3: Hashing and Sorting
+- Hash Tables and Collision Resolution
+- Sorting Algorithms (Merge, Quick, Heap sort)
+
+Module 4: Graphs
+- Graph Representation
+- Graph Traversal (BFS, DFS)
+- Shortest Paths (Dijkstra)
+- Minimum Spanning Trees

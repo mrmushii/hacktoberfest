@@ -1,0 +1,12 @@
+CSE-301 DATA STRUCTURES — FINAL EXAMINATION 2025
+Full marks: 60
+
+1. (a) Delete a node from a doubly linked list; handle all cases. [5]
+   (b) Convert infix A+B*C to postfix using a stack. [5]
+2. (a) Delete the root from the given BST and show the result. [5]
+   (b) Explain insertion into a min-heap with an example. [5]3. (a) Insert keys into a hash table of size 7 using chaining. [5]
+   (b) Trace heap sort on 12, 11, 13, 5, 6. [5]
+4. (a) Find shortest paths from A using Dijkstra's algorithm. [6]
+   (b) Run BFS and give the BFS tree. [4]
+5. (a) What is the height of an AVL tree with n nodes? Justify. [5]
+   (b) Compare adjacency matrix and list for sparse graphs. [5]

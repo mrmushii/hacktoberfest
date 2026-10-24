@@ -7,6 +7,7 @@ import type { NoticeFields } from "@/lib/notices/schema";
 import type { Match } from "@/lib/notices/match";
 import type { FieldChange } from "@/lib/notices/diff";
 import { AiBadge, Badge, Card } from "@/components/ui";
+import { Elapsed } from "@/components/client";
 
 type Analysis = {
   fields: NoticeFields;
@@ -37,13 +38,11 @@ export function NoticeUpload() {
   const [error, setError] = useState("");
   const [a, setA] = useState<Analysis | null>(null);
   const [asNew, setAsNew] = useState(false);
-  const [started, setStarted] = useState(0);
 
   async function analyze(form: FormData) {
     setBusy("analyze");
     setError("");
     setA(null);
-    setStarted(Date.now());
     const res = await fetch("/api/notices/analyze", { method: "POST", body: form });
     const body = await res.json();
     // Cache hits return instantly; keep a short "replaying" state so the demo reads clearly.
@@ -93,7 +92,7 @@ export function NoticeUpload() {
             {busy === "analyze" ? <Loader2 size={16} className="animate-spin" /> : null}
             {busy === "analyze" ? "Analysing…" : "Analyse notice"}
           </button>
-          {busy === "analyze" && <Elapsed since={started} />}
+          {busy === "analyze" && <Elapsed label="Running on the local model (first run loads it)" />}
         </form>
       </Card>
 
@@ -183,10 +182,4 @@ export function NoticeUpload() {
       )}
     </div>
   );
-}
-
-function Elapsed({ since }: { since: number }) {
-  const [, tick] = useState(0);
-  setTimeout(() => tick((t) => t + 1), 1000);
-  return <p className="text-xs text-muted">Running on the local model… {Math.round((Date.now() - since) / 1000)}s (first run loads the model)</p>;
 }

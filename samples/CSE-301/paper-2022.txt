@@ -1,0 +1,13 @@
+CSE-301 DATA STRUCTURES — FINAL EXAMINATION 2022
+Time: 3 hours                     Full marks: 60
+Answer all questions.
+
+1. (a) Define Big-O notation. Show that 3n^2 + 5n = O(n^2). [5]
+   (b) Compare arrays and singly linked lists for insertion at the head. [5]
+2. (a) Write an algorithm to evaluate a postfix expression using a stack. [6]
+   (b) Explain how a circular queue avoids wasted space. [4]3. (a) Insert 50, 30, 70, 20, 40, 60, 80 into an empty BST and show the inorder traversal. [6]
+   (b) Delete 30 from the BST in (a) and draw the result. [4]
+4. (a) Explain linear probing and chaining for hash collisions. [6]
+   (b) Trace quicksort on 9, 4, 7, 1, 8, 2. [4]
+5. (a) Run BFS from vertex A on the given graph and list the visit order. [5]
+   (b) Apply Dijkstra's algorithm from source S. [5]

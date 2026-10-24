@@ -11,7 +11,7 @@ export async function ingestDocument(courseId: string, kind: DocKind, up: Upload
   const existing = await db.courseDocument.findFirst({ where: { courseId, contentHash } });
   if (existing) return { document: existing, reused: true };
 
-  const pages = up.kind === "pdf" ? await pdfPages(up.bytes) : up.kind === "text" ? [up.text ?? ""] : [];
+  const pages = up.kind === "pdf" ? await pdfPages(up.bytes) : up.kind === "text" ? (up.text ?? "").split("\f") : [];
   if (!pages.some((p) => p.trim())) throw new Error("No text found. Upload a text PDF or .txt file.");
 
   if (kind === "syllabus") {

@@ -1,0 +1,13 @@
+DEPARTMENT OF COMPUTER SCIENCE AND ENGINEERING
+Notice No. CSE/2026/114                                  Date: 10 October 2026
+
+MIDTERM EXAMINATION — CSE-301 DATA STRUCTURES
+
+This is to notify all students of Semester 5, Sections A and B, that the Midterm
+Examination of CSE-301 (Data Structures) will be held on 12 November 2026 at
+10:00 AM in Room 402, Academic Building 2.
+
+Students must bring their university ID cards. Calculators are not permitted.
+Syllabus: Lectures 1–8 (Arrays to Binary Search Trees).
+
+Chairman, Department of CSE
