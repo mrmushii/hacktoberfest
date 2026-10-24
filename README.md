@@ -1,36 +1,122 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# UniHub 🎓
 
-## Getting Started
+An intelligent academic intelligence and resource management platform built for Hacktoberfest. UniHub streamlines university notices, diffs exam and schedule announcements, indexes course documents and past papers, and leverages local LLMs (via Ollama) for automated question extraction and study aids.
 
-First, run the development server:
+## 🚀 Key Features
+
+- **Notice Management & Version Diffing**:
+  - Automatically parses notice announcements, schedules, and deadlines.
+  - Detects notice revisions, highlighting added, modified, or cancelled fields (e.g., date, time, venue changes).
+  - Normalizes courses, sections, and room numbers into canonical formats.
+- **Course Documents & Past Paper Indexing**:
+  - Supports PDF ingestion and multi-page text extraction (`unpdf`).
+  - Automatic exam question detection, mark breakdown, and topic tagging.
+- **Local AI Processing via Ollama**:
+  - Two-tier model execution (fast vs. smart) with automated JSON schema validation using Zod.
+  - Content-hash-based AI result caching to prevent redundant LLM invocations.
+- **Relational Data Model**:
+  - Backed by Prisma ORM with SQLite for instant local development and zero-config setup.
+- **Automated Testing Suite**:
+  - Unit and integration tests powered by Vitest.
+
+---
+
+## 🛠️ Tech Stack
+
+- **Framework**: [Next.js 15](https://nextjs.org/) (App Router, Turbopack) & [React 19](https://react.dev/)
+- **Database & ORM**: [Prisma](https://www.prisma.io/) with SQLite
+- **Styling**: [Tailwind CSS v4](https://tailwindcss.com/) & [Lucide React](https://lucide.dev/)
+- **Validation**: [Zod](https://zod.dev/)
+- **PDF Processing**: [unpdf](https://github.com/unjs/unpdf)
+- **Local AI Engine**: [Ollama](https://ollama.ai/)
+- **Testing**: [Vitest](https://vitest.dev/)
+
+---
+
+## 🏁 Getting Started
+
+### 1. Prerequisites
+
+- **Node.js**: `v20+` or `v22+`
+- **npm** / **pnpm** / **bun**
+- *(Optional)* [Ollama](https://ollama.ai/) for local AI inference
+
+### 2. Installation
+
+Clone the repository and install dependencies:
+
+```bash
+git clone https://github.com/mrmushii/hacktoberfest.git
+cd hacktoberfest
+npm install
+```
+
+### 3. Environment Variables
+
+Copy the example environment configuration:
+
+```bash
+cp .env.example .env
+```
+
+Default `.env` configuration:
+```env
+DATABASE_URL="file:./dev.db"
+AI_BASE_URL="http://localhost:11434"
+MODEL_FAST="qwen3.5:4b"
+MODEL_SMART="qwen3.5:4b"
+AI_NUM_CTX="8192"
+AI_CONCURRENCY="1"
+AI_TIMEOUT_MS="600000"
+CACHE_MODE="readwrite"
+```
+
+### 4. Database Setup
+
+Push the Prisma schema to generate the SQLite database client:
+
+```bash
+npx prisma db push
+```
+
+### 5. Run Development Server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) with your browser to view the application.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🧪 Running Tests
 
-## Learn More
+Run the Vitest test suite:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm test
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Or run with watch mode:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npx vitest
+```
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 📜 Available Scripts
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Command | Description |
+| :--- | :--- |
+| `npm run dev` | Starts the Next.js development server with Turbopack |
+| `npm run build` | Builds the application for production |
+| `npm run start` | Starts the production server |
+| `npm run lint` | Runs ESLint checks |
+| `npm test` | Runs the test suite via Vitest |
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit issues or pull requests.

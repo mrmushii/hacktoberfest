@@ -1,0 +1,136 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String         @id @default(cuid())
+  name          String
+  department    String
+  semester      Int
+  section       String
+  notifications Notification[]
+  tasks         Task[]
+}
+
+model Course {
+  id         String           @id @default(cuid())
+  code       String           @unique
+  title      String
+  department String
+  semester   Int
+  topics     String           @default("[]") // JSON {name,module}[] from the syllabus
+  documents  CourseDocument[]
+  notices    Notice[]
+}
+
+// A logical announcement; each upload is a NoticeVersion.
+model Notice {
+  id         String          @id @default(cuid())
+  courseId   String?
+  course     Course?         @relation(fields: [courseId], references: [id])
+  eventType  String
+  department String
+  semester   Int?
+  sections   String          // JSON string[]; empty = all sections
+  status     String          @default("active") // active | cancelled | archived
+  updatedAt  DateTime        @updatedAt
+  createdAt  DateTime        @default(now())
+  versions   NoticeVersion[]
+  notifications Notification[]
+  tasks      Task[]
+}
+
+model NoticeVersion {
+  id          String         @id @default(cuid())
+  noticeId    String
+  notice      Notice         @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+  version     Int
+  title       String
+  fields      String         // JSON NoticeFields
+  rawText     String
+  sourceName  String
+  contentHash String
+  createdAt   DateTime       @default(now())
+  changes     NoticeChange[]
+}
+
+model NoticeChange {
+  id        String        @id @default(cuid())
+  versionId String
+  version   NoticeVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  field     String
+  kind      String        // added | modified | removed
+  before    String?
+  after     String?
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  noticeId  String
+  notice    Notice   @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model CourseDocument {
+  id          String         @id @default(cuid())
+  courseId    String
+  course      Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  kind        String         // syllabus | lecture | paper
+  name        String
+  contentHash String
+  pages       String         // JSON string[] (text per page)
+  createdAt   DateTime       @default(now())
+  questions   ExamQuestion[]
+}
+
+model ExamQuestion {
+  id         String         @id @default(cuid())
+  documentId String
+  document   CourseDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  number     String
+  text       String
+  marks      Float?
+  page       Int
+  topic      String?
+  confidence Float?
+}
+
+model StudyArtifact {
+  id        String   @id @default(cuid())
+  courseId  String
+  kind      String   // summary | quiz | practice
+  content   String   // JSON
+  createdAt DateTime @default(now())
+}
+
+model Task {
+  id       String   @id @default(cuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  noticeId String?
+  notice   Notice?  @relation(fields: [noticeId], references: [id], onDelete: SetNull)
+  title    String
+  due      String   // ISO date (+ optional time) as text, validated in code
+  done     Boolean  @default(false)
+
+  @@unique([userId, noticeId])
+}
+
+// Content-addressed AI result cache; survives demo resets.
+model AiCache {
+  key        String   @id
+  model      String
+  task       String
+  output     String
+  durationMs Int
+  createdAt  DateTime @default(now())
+}
