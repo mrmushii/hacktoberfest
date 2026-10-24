@@ -7,7 +7,10 @@
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "reset": "tsx scripts/reset.ts",
+    "prewarm": "tsx scripts/reset.ts --prewarm",
+    "db:push": "prisma db push"
   },
   "dependencies": {
     "@prisma/client": "^6.16.2",
