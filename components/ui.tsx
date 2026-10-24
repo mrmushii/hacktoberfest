@@ -36,12 +36,12 @@ export const Empty = ({ children }: { children: ReactNode }) => (
   <div className="rounded-xl border border-dashed border-line p-8 text-center text-sm text-muted">{children}</div>
 );
 
-export function AiBadge({ ai }: { ai: { cached: boolean; durationMs: number; model: string } }) {
+export function AiBadge({ ai }: { ai: { cached: boolean; durationMs: number; model: string; provider?: string } }) {
   const secs = ai.durationMs / 1000;
   const t = secs >= 60 ? `${Math.floor(secs / 60)}m ${Math.round(secs % 60)}s` : `${secs.toFixed(1)}s`;
   return ai.cached ? (
-    <Badge tone="blue">⚡ cached · originally {t} on {ai.model}</Badge>
+    <Badge tone="blue">⚡ cached · originally {t} · {ai.provider} · {ai.model}</Badge>
   ) : (
-    <Badge tone="green">● live · {t} on {ai.model}</Badge>
+    <Badge tone="green">● live · {t} · {ai.provider} · {ai.model}</Badge>
   );
 }

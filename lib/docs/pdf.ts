@@ -7,7 +7,8 @@ export async function pdfPages(bytes: Uint8Array): Promise<string[]> {
   return text.map((t) => t.replace(/[ \t]+/g, " ").trim());
 }
 
-export type Upload = { name: string; kind: "pdf" | "image" | "text"; bytes: Uint8Array; text?: string };
+/** ocr: text the browser read from an image (tesseract.js), with its mean confidence 0–100. */
+export type Upload = { name: string; kind: "pdf" | "image" | "text"; bytes: Uint8Array; text?: string; ocr?: { text: string; confidence: number } };
 
 export async function readUpload(file: File): Promise<Upload> {
   const bytes = new Uint8Array(await file.arrayBuffer());

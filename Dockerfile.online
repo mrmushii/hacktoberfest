@@ -1,0 +1,15 @@
+# Online judging without a GPU: the app calls open-weight models on Groq / the Gemini API.
+# docker build -f Dockerfile.online -t unihub-online .
+# docker run -p 3000:3000 --env-file .env.online -v unihub-data:/app/data unihub-online
+FROM node:22-bookworm-slim
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
+COPY package*.json ./
+COPY scripts ./scripts
+RUN npm ci
+COPY . .
+RUN npx prisma generate && npm run build
+ENV NODE_ENV=production PORT=3000 DATABASE_URL=file:/app/data/unihub.db AI_PROVIDERS=groq,gemini
+EXPOSE 3000
+# The volume keeps the database (and its AI cache) across restarts.
+CMD ["sh", "-c", "mkdir -p /app/data && npx prisma db push --skip-generate && npm start"]

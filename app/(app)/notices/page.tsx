@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { currentUser, fmtDue } from "@/lib/profile";
+import { currentUser, fmtDue, viewDept } from "@/lib/profile";
 import { fieldsOf } from "@/lib/notices/service";
 import { Badge, Button, Card, Empty, PageTitle } from "@/components/ui";
 
 const VIEWS = [
-  ["mine", "My notices"],
+  ["mine", "For me"],
   ["latest", "Latest"],
   ["updated", "Updated"],
   ["upcoming", "Upcoming"],
@@ -15,7 +15,9 @@ const VIEWS = [
 
 export default async function Notices({ searchParams }: { searchParams: Promise<{ view?: string; q?: string }> }) {
   const { view = "mine", q = "" } = await searchParams;
-  const user = await currentUser();
+  const user = (await currentUser())!;
+  const dept = viewDept(user);
+  const own = dept === user.department;
   const notices = await db.notice.findMany({ include: { versions: { orderBy: { version: "desc" } } }, orderBy: { updatedAt: "desc" } });
   const today = new Date().toISOString().slice(0, 10);
 
@@ -28,8 +30,9 @@ export default async function Notices({ searchParams }: { searchParams: Promise<
       if (archived) return false;
       if (view === "updated") return v > 1;
       if (view === "upcoming") return (f.date ?? f.deadline ?? "") >= today && !f.cancelled;
+      // "Mine" = my batch; while browsing another department, everything from that department.
       if (view === "mine")
-        return !!user && f.department === user.department && (f.semester === null || f.semester === user.semester) && (f.sections.length === 0 || f.sections.includes(user.section));
+        return f.department === dept && (!own || ((f.semester === null || f.semester === user.semester) && (f.sections.length === 0 || f.sections.includes(user.section ?? ""))));
       return true;
     });
   if (view === "upcoming") rows.sort((a, b) => (a.f.date ?? a.f.deadline ?? "").localeCompare(b.f.date ?? b.f.deadline ?? ""));

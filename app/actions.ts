@@ -1,51 +1,94 @@
 "use server";
 
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { signOut } from "@/auth";
 import { db } from "@/lib/db";
 import { remapPapers } from "@/lib/docs/ingest";
+import { Profile } from "@/lib/onboarding";
 import { currentUser } from "@/lib/profile";
 
-export async function switchProfile(form: FormData) {
-  (await cookies()).set("uid", String(form.get("uid")), { path: "/" });
+async function requireUser() {
+  const u = await currentUser();
+  if (!u) redirect("/login");
+  return u;
+}
+
+export type SaveResult = { ok: true } | { ok: false; error: string };
+
+/** Used by onboarding and the profile page: validate, save, replace enrollments. */
+export async function saveProfile(input: unknown, finish: boolean): Promise<SaveResult> {
+  const u = await requireUser();
+  const parsed = Profile.safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
+  const { courseIds, theme, notifyTypes, ...p } = parsed.data;
+  const valid = await db.course.findMany({ where: { id: { in: courseIds } }, select: { id: true } });
+  await db.$transaction([
+    db.user.update({ where: { id: u.id }, data: { ...p, notifyTypes: JSON.stringify(notifyTypes), onboarded: true, viewDepartment: null } }),
+    db.enrollment.deleteMany({ where: { userId: u.id } }),
+    db.enrollment.createMany({ data: valid.map((c) => ({ userId: u.id, courseId: c.id })) }),
+  ]);
+  (await cookies()).set("theme", theme, { path: "/", maxAge: 60 * 60 * 24 * 365 });
+  revalidatePath("/", "layout");
+  if (finish) redirect("/");
+  return { ok: true };
+}
+
+export async function setViewDepartment(form: FormData) {
+  const u = await requireUser();
+  const dept = String(form.get("department") ?? "").toUpperCase();
+  await db.user.update({ where: { id: u.id }, data: { viewDepartment: !dept || dept === u.department ? null : dept } });
   revalidatePath("/", "layout");
 }
 
+export async function setTheme(theme: "system" | "light" | "dark") {
+  (await cookies()).set("theme", theme, { path: "/", maxAge: 60 * 60 * 24 * 365 });
+  revalidatePath("/", "layout");
+}
+
+export async function logout() {
+  await signOut({ redirectTo: "/login" });
+}
+
 export async function markAllRead() {
-  const u = await currentUser();
-  if (u) await db.notification.updateMany({ where: { userId: u.id, read: false }, data: { read: true } });
+  const u = await requireUser();
+  await db.notification.updateMany({ where: { userId: u.id, read: false }, data: { read: true } });
   revalidatePath("/", "layout");
 }
 
 export async function toggleTask(form: FormData) {
-  const u = await currentUser();
+  const u = await requireUser();
   const id = String(form.get("id"));
-  const task = await db.task.findFirst({ where: { id, userId: u?.id } });
+  const task = await db.task.findFirst({ where: { id, userId: u.id } });
   if (task) await db.task.update({ where: { id }, data: { done: !task.done } });
   revalidatePath("/", "layout");
 }
 
 export async function addTask(form: FormData) {
-  const u = await currentUser();
+  const u = await requireUser();
   const title = String(form.get("title") ?? "").trim();
   const due = String(form.get("due") ?? "");
-  if (u && title && /^\d{4}-\d{2}-\d{2}$/.test(due)) await db.task.create({ data: { userId: u.id, title, due } });
+  if (title && /^\d{4}-\d{2}-\d{2}$/.test(due)) await db.task.create({ data: { userId: u.id, title, due } });
   revalidatePath("/planner");
 }
 
 /** Student review of a topic assignment; a reviewed mapping gets confidence 1. */
 export async function setQuestionTopic(form: FormData) {
+  await requireUser();
   const topic = String(form.get("topic") ?? "");
   await db.examQuestion.update({ where: { id: String(form.get("id")) }, data: { topic: topic || null, confidence: 1 } });
   revalidatePath("/examgraph", "layout");
 }
 
 export async function remap(form: FormData) {
+  await requireUser();
   await remapPapers(String(form.get("courseId")));
   revalidatePath("/examgraph", "layout");
 }
 
 export async function archiveNotice(form: FormData) {
+  await requireUser();
   await db.notice.update({ where: { id: String(form.get("id")) }, data: { status: "archived" } });
   revalidatePath("/", "layout");
 }

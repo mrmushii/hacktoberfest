@@ -8,15 +8,17 @@ import type { Match } from "@/lib/notices/match";
 import type { FieldChange } from "@/lib/notices/diff";
 import { AiBadge, Badge, Card } from "@/components/ui";
 import { Elapsed } from "@/components/client";
+import { ocrImage } from "@/lib/ocr";
 
 type Analysis = {
   fields: NoticeFields;
   rawText: string;
   match: Match;
   changes: FieldChange[];
-  ai: { cached: boolean; durationMs: number; model: string };
+  ai: { cached: boolean; durationMs: number; model: string; provider: string };
   sourceName: string;
   contentHash: string;
+  ocrConfidence: number | null;
 };
 
 const EDITABLE: [keyof NoticeFields, string][] = [
@@ -34,15 +36,29 @@ const EDITABLE: [keyof NoticeFields, string][] = [
 
 export function NoticeUpload() {
   const router = useRouter();
-  const [busy, setBusy] = useState<"" | "analyze" | "publish">("");
+  const [busy, setBusy] = useState<"" | "ocr" | "analyze" | "publish">("");
+  const [ocrPct, setOcrPct] = useState(0);
   const [error, setError] = useState("");
   const [a, setA] = useState<Analysis | null>(null);
   const [asNew, setAsNew] = useState(false);
 
   async function analyze(form: FormData) {
-    setBusy("analyze");
     setError("");
     setA(null);
+    const file = form.get("file");
+    // Photos: read the text in the browser first, so text-only online models can process it too.
+    if (file instanceof File && file.size > 0 && file.type.startsWith("image/")) {
+      setBusy("ocr");
+      setOcrPct(0);
+      try {
+        const ocr = await ocrImage(file, (p) => setOcrPct(Math.round(p * 100)));
+        form.set("ocrText", ocr.text);
+        form.set("ocrConfidence", String(ocr.confidence));
+      } catch {
+        // OCR is best effort; the server still accepts the image for vision-capable models.
+      }
+    }
+    setBusy("analyze");
     const res = await fetch("/api/notices/analyze", { method: "POST", body: form });
     const body = await res.json();
     // Cache hits return instantly; keep a short "replaying" state so the demo reads clearly.
@@ -89,8 +105,8 @@ export function NoticeUpload() {
             <textarea name="text" rows={4} className="input font-mono" placeholder="Paste the notice text here" />
           </div>
           <button className="btn-primary w-fit" disabled={!!busy}>
-            {busy === "analyze" ? <Loader2 size={16} className="animate-spin" /> : null}
-            {busy === "analyze" ? "Analysing…" : "Analyse notice"}
+            {busy === "analyze" || busy === "ocr" ? <Loader2 size={16} className="animate-spin" /> : null}
+            {busy === "ocr" ? `Reading image… ${ocrPct}%` : busy === "analyze" ? "Analysing…" : "Analyse notice"}
           </button>
           {busy === "analyze" && <Elapsed label="Running on the local model (first run loads it)" />}
         </form>
@@ -104,6 +120,7 @@ export function NoticeUpload() {
             <div className="mb-4 flex flex-wrap items-center gap-2">
               <span className="font-medium">Extracted details</span>
               <AiBadge ai={a.ai} />
+              {a.ocrConfidence !== null && <Badge tone={a.ocrConfidence < 70 ? "amber" : "neutral"}>OCR confidence {a.ocrConfidence}%</Badge>}
               {f.uncertain.length > 0 && <Badge tone="amber">Check: {f.uncertain.join(", ")}</Badge>}
             </div>
             <div className="grid gap-3 sm:grid-cols-2">

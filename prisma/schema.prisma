@@ -8,13 +8,32 @@ datasource db {
 }
 
 model User {
-  id            String         @id @default(cuid())
-  name          String
-  department    String
-  semester      Int
-  section       String
-  notifications Notification[]
-  tasks         Task[]
+  id             String         @id @default(cuid())
+  email          String         @unique
+  name           String
+  image          String?
+  university     String?
+  studentId      String?
+  department     String?
+  semester       Int?
+  section        String?
+  onboarded      Boolean        @default(false)
+  language       String         @default("en")
+  notifyTypes    String         @default("[\"exam\",\"class\",\"assignment\",\"registration\",\"event\",\"other\"]")
+  viewDepartment String?        // browse another department's notices/courses
+  createdAt      DateTime       @default(now())
+  notifications  Notification[]
+  tasks          Task[]
+  enrollments    Enrollment[]
+}
+
+model Enrollment {
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@id([userId, courseId])
 }
 
 model Course {
@@ -26,6 +45,7 @@ model Course {
   topics     String           @default("[]") // JSON {name,module}[] from the syllabus
   documents  CourseDocument[]
   notices    Notice[]
+  enrollments Enrollment[]
 }
 
 // A logical announcement; each upload is a NoticeVersion.

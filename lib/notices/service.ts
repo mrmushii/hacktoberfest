@@ -32,7 +32,8 @@ export async function analyzeNotice(up: Upload) {
     rawText: ext.rawText,
     match,
     changes,
-    ai: { cached: ext.cached, durationMs: ext.durationMs, model: ext.model },
+    ai: { cached: ext.cached, durationMs: ext.durationMs, model: ext.model, provider: ext.provider },
+    ocrConfidence: ext.ocrConfidence,
     sourceName: up.name,
     contentHash: sha256(up.bytes),
   };
@@ -47,6 +48,8 @@ export type PublishInput = {
 };
 
 const audienceWhere = (f: NoticeFields) => ({
+  onboarded: true,
+  notifyTypes: { contains: `"${f.eventType}"` },
   department: f.department,
   ...(f.semester !== null && { semester: f.semester }),
   ...(f.sections.length > 0 && { section: { in: f.sections } }),

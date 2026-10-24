@@ -5,16 +5,16 @@ import { PageTitle } from "@/components/ui";
 
 const TEMPLATES = ["Classic", "Modern", "Minimal"] as const;
 
-export function CoverPage({ student, section, courses }: { student: string; section: string; courses: string[] }) {
+export function CoverPage({ student, university, studentId, section, courses }: { student: string; university: string; studentId: string; section: string; courses: string[] }) {
   const [t, setT] = useState<(typeof TEMPLATES)[number]>("Classic");
   const [v, setV] = useState({
-    university: "University of Dhaka",
+    university: university || "University",
     kind: "Assignment",
     title: "",
     course: courses[0] ?? "",
     teacher: "",
     student,
-    id: "",
+    id: studentId,
     section,
     date: new Date().toISOString().slice(0, 10),
   });

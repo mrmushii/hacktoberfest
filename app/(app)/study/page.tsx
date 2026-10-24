@@ -1,11 +1,13 @@
 import { db } from "@/lib/db";
+import { currentUser, viewDept } from "@/lib/profile";
 import { Empty, PageTitle } from "@/components/ui";
 import { StudyTool } from "./tool";
 
 export default async function Study({ searchParams }: { searchParams: Promise<{ course?: string }> }) {
   const { course } = await searchParams;
+  const dept = viewDept((await currentUser())!);
   const docs = await db.courseDocument.findMany({
-    where: { kind: { in: ["lecture", "syllabus"] }, ...(course && { course: { code: course } }) },
+    where: { kind: { in: ["lecture", "syllabus"] }, course: course ? { code: course } : { department: dept } },
     include: { course: true },
     orderBy: { name: "asc" },
   });

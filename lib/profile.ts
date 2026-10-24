@@ -1,10 +1,14 @@
-import { cookies } from "next/headers";
+import { auth } from "@/auth";
 import { db } from "@/lib/db";
 
+/** The signed-in student, or null. Every page, action and API route goes through this. */
 export async function currentUser() {
-  const id = (await cookies()).get("uid")?.value;
-  return (id && (await db.user.findUnique({ where: { id } }))) || db.user.findFirst({ orderBy: { name: "asc" } });
+  const id = (await auth())?.user?.id;
+  return id ? db.user.findUnique({ where: { id } }) : null;
 }
+
+/** Department whose notices and courses are being browsed (own department unless switched). */
+export const viewDept = (u: { viewDepartment: string | null; department: string | null }) => u.viewDepartment ?? u.department ?? "";
 
 export const fmtDue = (due: string) => {
   const [d, t] = due.split("T");

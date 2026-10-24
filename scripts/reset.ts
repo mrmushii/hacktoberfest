@@ -4,6 +4,7 @@
  */
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { DEMO_DOMAIN } from "@/auth";
 import { db } from "@/lib/db";
 import { ingestDocument, type DocKind } from "@/lib/docs/ingest";
 import type { Upload } from "@/lib/docs/pdf";
@@ -39,14 +40,16 @@ async function main() {
     db.studyArtifact.deleteMany(),
     db.courseDocument.deleteMany(),
     db.course.deleteMany(),
-    db.user.deleteMany(),
   ]);
 
+  // Demo students (DEMO_LOGIN). Real Google users are kept across resets; only demo accounts are recreated.
+  await db.user.deleteMany({ where: { email: { endsWith: `@${DEMO_DOMAIN}` } } });
+  const university = "University of Dhaka";
   await db.user.createMany({
     data: [
-      { name: "Ayesha Rahman", department: "CSE", semester: 5, section: "A" },
-      { name: "Tanvir Hasan", department: "CSE", semester: 5, section: "B" },
-      { name: "Nusrat Jahan", department: "EEE", semester: 3, section: "A" },
+      { email: `ayesha@${DEMO_DOMAIN}`, name: "Ayesha Rahman", university, studentId: "2022-1-60-011", department: "CSE", semester: 5, section: "A", onboarded: true },
+      { email: `tanvir@${DEMO_DOMAIN}`, name: "Tanvir Hasan", university, studentId: "2022-1-60-047", department: "CSE", semester: 5, section: "B", onboarded: true },
+      { email: `nusrat@${DEMO_DOMAIN}`, name: "Nusrat Jahan", university, studentId: "2023-2-50-019", department: "EEE", semester: 3, section: "A", onboarded: true },
     ],
   });
   await db.course.createMany({
@@ -56,6 +59,11 @@ async function main() {
       { code: "EEE-201", title: "Electrical Circuits", department: "EEE", semester: 3 },
     ],
   });
+  // Enroll every onboarded student in their batch's courses (keeps real users' choices if they still exist).
+  for (const u of await db.user.findMany({ where: { onboarded: true } })) {
+    const courses = await db.course.findMany({ where: { department: u.department!, semester: u.semester! } });
+    await db.enrollment.createMany({ data: courses.map((c) => ({ userId: u.id, courseId: c.id })) });
+  }
 
   console.log("Publishing original notices…");
   for (const f of (await readdir(join(SAMPLES, "notices"))).sort()) {

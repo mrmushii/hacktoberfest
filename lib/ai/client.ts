@@ -1,33 +1,15 @@
 import { z } from "zod/v4";
 import { db } from "@/lib/db";
 import { sha256 } from "@/lib/hash";
+import { inLane, providerChain, RateLimited, type Provider } from "./providers";
 
 export type Tier = "fast" | "smart";
 
 export class AiError extends Error {}
 
-export type AiResult<T> = { data: T; cached: boolean; durationMs: number; model: string };
+export type AiResult<T> = { data: T; cached: boolean; durationMs: number; model: string; provider: string };
 
 const env = (k: string, d: string) => process.env[k] ?? d;
-
-export function modelFor(tier: Tier) {
-  return tier === "fast" ? env("MODEL_FAST", "gemma4:e2b") : env("MODEL_SMART", "gemma4:e4b");
-}
-
-// Ollama runs one model instance; queue requests so parallel uploads wait instead of failing.
-let active = 0;
-const waiting: (() => void)[] = [];
-async function withSlot<T>(fn: () => Promise<T>): Promise<T> {
-  const limit = Number(env("AI_CONCURRENCY", "1"));
-  if (active >= limit) await new Promise<void>((r) => waiting.push(r));
-  active++;
-  try {
-    return await fn();
-  } finally {
-    active--;
-    waiting.shift()?.();
-  }
-}
 
 type Generate<S extends z.ZodType> = {
   task: string; // also the prompt version, e.g. "notice.extract@1"
@@ -35,99 +17,98 @@ type Generate<S extends z.ZodType> = {
   schema: S;
   system: string;
   prompt: string;
-  images?: Uint8Array[];
+  images?: Uint8Array[]; // only sent to providers that accept images
+  imageOnly?: boolean; // the prompt has no usable text without the image
 };
 
+const cacheKey = (model: string, req: Generate<z.ZodType>, images: Uint8Array[]) => sha256(model, req.task, req.system, req.prompt, ...images);
+
 /**
- * Structured generation through Ollama. Results are cached by a hash of
- * model + task + inputs, and only stored once they pass schema validation.
+ * Structured generation across the configured provider chain.
+ * Cache first (for every provider's model), then each provider in order; 429s wait briefly, retry once,
+ * then fall through. Only schema-valid output is returned or cached — otherwise a clear AiError.
  */
 export async function generate<S extends z.ZodType>(req: Generate<S>): Promise<AiResult<z.infer<S>>> {
-  const model = modelFor(req.tier);
   const mode = env("CACHE_MODE", "readwrite");
-  const key = sha256(model, req.task, req.system, req.prompt, ...(req.images ?? []));
+  const chain = providerChain().filter((p) => p.configured);
+  if (!chain.length) throw new AiError("No AI provider configured. Set AI_PROVIDERS and the matching API keys in .env.");
+  const imagesFor = (p: Provider) => (p.supportsImages ? (req.images ?? []) : []);
 
   if (mode !== "off") {
-    const hit = await db.aiCache.findUnique({ where: { key } });
-    if (hit) {
+    for (const p of chain) {
+      const model = p.model(req.tier);
+      const hit = await db.aiCache.findUnique({ where: { key: cacheKey(model, req, imagesFor(p)) } });
+      if (!hit) continue;
       const parsed = req.schema.safeParse(JSON.parse(hit.output));
-      if (parsed.success) return { data: parsed.data, cached: true, durationMs: hit.durationMs, model };
+      if (parsed.success) return { data: parsed.data, cached: true, durationMs: hit.durationMs, model, provider: p.name };
     }
   }
 
-  const started = Date.now();
   const jsonSchema = z.toJSONSchema(req.schema);
-  let lastErr = "";
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const content = await withSlot(() => callOllama(model, req, jsonSchema));
-    let json: unknown;
+  const timeoutMs = Number(env("AI_TIMEOUT_MS", "600000"));
+  const failures: string[] = [];
+  for (const p of chain) {
+    const model = p.model(req.tier);
+    const images = imagesFor(p);
+    if (req.imageOnly && !images.length) {
+      failures.push(`${p.name}: needs text (this provider can't read images)`);
+      continue;
+    }
+    const started = Date.now();
     try {
-      json = JSON.parse(content);
-    } catch {
-      lastErr = "model returned invalid JSON";
-      continue;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        let content: string;
+        try {
+          content = await inLane(p, () => p.call(model, { system: req.system, prompt: req.prompt, images, jsonSchema, timeoutMs }));
+        } catch (e) {
+          if (e instanceof RateLimited && attempt === 0 && e.retryAfterMs <= 10000) {
+            await new Promise((r) => setTimeout(r, e.retryAfterMs));
+            continue;
+          }
+          throw e;
+        }
+        let json: unknown;
+        try {
+          json = JSON.parse(content);
+        } catch {
+          failures.push(`${p.name}: invalid JSON`);
+          continue;
+        }
+        const parsed = req.schema.safeParse(json);
+        if (!parsed.success) {
+          failures.push(`${p.name}: ${parsed.error.issues[0]?.message ?? "schema mismatch"}`);
+          continue;
+        }
+        const durationMs = Date.now() - started;
+        if (mode === "readwrite") {
+          const key = cacheKey(model, req, images);
+          const row = { model, task: req.task, output: JSON.stringify(parsed.data), durationMs };
+          await db.aiCache.upsert({ where: { key }, create: { key, ...row }, update: row });
+        }
+        return { data: parsed.data, cached: false, durationMs, model, provider: p.name };
+      }
+    } catch (e) {
+      failures.push(`${p.name}: ${e instanceof RateLimited ? "rate limited" : (e as Error).message}`);
     }
-    const parsed = req.schema.safeParse(json);
-    if (!parsed.success) {
-      lastErr = parsed.error.message;
-      continue;
-    }
-    const durationMs = Date.now() - started;
-    if (mode === "readwrite") {
-      const row = { model, task: req.task, output: JSON.stringify(parsed.data), durationMs };
-      await db.aiCache.upsert({ where: { key }, create: { key, ...row }, update: row });
-    }
-    return { data: parsed.data, cached: false, durationMs, model };
   }
-  throw new AiError(`AI output failed validation: ${lastErr.slice(0, 300)}`);
-}
-
-async function callOllama(model: string, req: Generate<z.ZodType>, format: unknown): Promise<string> {
-  const headers: Record<string, string> = { "content-type": "application/json" };
-  if (process.env.AI_TOKEN) headers.authorization = `Bearer ${process.env.AI_TOKEN}`;
-  let res: Response;
-  try {
-    res = await fetch(`${env("AI_BASE_URL", "http://localhost:11434")}/api/chat`, {
-      method: "POST",
-      headers,
-      signal: AbortSignal.timeout(Number(env("AI_TIMEOUT_MS", "600000"))),
-      body: JSON.stringify({
-        model,
-        stream: false,
-        think: false,
-        keep_alive: -1,
-        format,
-        options: { temperature: 0, num_ctx: Number(env("AI_NUM_CTX", "8192")) },
-        messages: [
-          { role: "system", content: req.system },
-          {
-            role: "user",
-            content: req.prompt,
-            ...(req.images?.length && { images: req.images.map((i) => Buffer.from(i).toString("base64")) }),
-          },
-        ],
-      }),
-    });
-  } catch (e) {
-    throw new AiError(`AI server unreachable at ${env("AI_BASE_URL", "")}: ${(e as Error).message}`);
-  }
-  const body = (await res.json().catch(() => ({}))) as { message?: { content?: string }; error?: string };
-  if (!res.ok || body.error) throw new AiError(`AI server error: ${body.error ?? res.status}`);
-  return body.message?.content ?? "";
+  throw new AiError(`AI unavailable — ${failures.join("; ").slice(0, 400)}`);
 }
 
 export async function aiStatus() {
-  const base = env("AI_BASE_URL", "http://localhost:11434");
-  try {
-    const res = await fetch(`${base}/api/tags`, { signal: AbortSignal.timeout(3000) });
-    const { models } = (await res.json()) as { models: { name: string }[] };
-    const names = models.map((m) => m.name);
-    return {
-      online: true,
-      base,
-      models: (["fast", "smart"] as const).map((t) => ({ tier: t, name: modelFor(t), installed: names.includes(modelFor(t)) })),
-    };
-  } catch {
-    return { online: false, base, models: [] };
-  }
+  const chain = providerChain();
+  return Promise.all(
+    chain.map(async (p) => {
+      const models = (["fast", "smart"] as const).map((tier) => ({ tier, name: p.model(tier) }));
+      if (p.name !== "ollama") return { provider: p.name, online: p.configured, detail: p.configured ? "API key set" : "API key missing", models };
+      const base = env("AI_BASE_URL", "http://localhost:11434");
+      try {
+        const res = await fetch(`${base}/api/tags`, { signal: AbortSignal.timeout(3000) });
+        const names = ((await res.json()) as { models: { name: string }[] }).models.map((m) => m.name);
+        const missing = models.filter((m) => !names.includes(m.name)).map((m) => m.name);
+        return { provider: p.name, online: missing.length === 0, detail: missing.length ? `not installed: ${missing.join(", ")}` : base, models };
+      } catch {
+        return { provider: p.name, online: false, detail: `unreachable at ${base}`, models };
+      }
+    }),
+  );
 }
