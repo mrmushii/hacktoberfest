@@ -2,7 +2,7 @@ import { handle } from "@/lib/api";
 import { db } from "@/lib/db";
 import { ask, quiz, summarize } from "@/lib/study";
 
-export const maxDuration = 600;
+export const maxDuration = 300;
 
 export async function POST(req: Request) {
   return handle(async () => {

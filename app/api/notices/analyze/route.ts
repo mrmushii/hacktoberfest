@@ -2,7 +2,7 @@ import { handle } from "@/lib/api";
 import { readUpload } from "@/lib/docs/pdf";
 import { analyzeNotice } from "@/lib/notices/service";
 
-export const maxDuration = 600;
+export const maxDuration = 300;
 
 export async function POST(req: Request) {
   return handle(async () => {

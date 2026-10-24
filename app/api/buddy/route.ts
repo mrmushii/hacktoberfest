@@ -4,7 +4,7 @@ import { currentUser } from "@/lib/profile";
 import { endSession, explain, goalQuiz, grade, mockExam, suggestGoals, type Goal } from "@/lib/buddy/ai";
 import type { Mcq } from "@/lib/buddy/material";
 
-export const maxDuration = 600;
+export const maxDuration = 300;
 
 type Body = {
   action: "suggest" | "start" | "goals" | "stuck" | "quiz" | "answer" | "end" | "mock" | "mockSubmit";

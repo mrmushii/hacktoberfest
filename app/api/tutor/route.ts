@@ -2,7 +2,7 @@ import { handle } from "@/lib/api";
 import { pdfPages } from "@/lib/docs/pdf";
 import { buildLesson } from "@/lib/tutor/lesson";
 
-export const maxDuration = 600;
+export const maxDuration = 300;
 
 /** multipart: text (typed or OCR'd in the browser), optional pdf, lang. */
 export async function POST(req: Request) {
