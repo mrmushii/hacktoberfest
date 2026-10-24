@@ -12,11 +12,14 @@ const show = (v: unknown): string | null => {
 /** Field-by-field comparison of two normalized versions. Unchanged fields are omitted. */
 export function diffNotice(prev: NoticeFields, next: NoticeFields): FieldChange[] {
   const out: FieldChange[] = [];
+  // A cancellation notice often omits the old date/room; that is not a separate change.
+  const cancelling = next.cancelled && !prev.cancelled;
   for (const [field, label] of COMPARED) {
     const before = field === "cancelled" && !prev.cancelled ? null : show(prev[field]);
     const after = field === "cancelled" && !next.cancelled ? null : show(next[field]);
     if (before === after) continue;
     const kind = before === null ? "added" : after === null ? "removed" : "modified";
+    if (cancelling && kind === "removed") continue;
     out.push({ field, label, kind, before, after });
   }
   return out;

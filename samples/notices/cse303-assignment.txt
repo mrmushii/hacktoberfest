@@ -1,5 +1,6 @@
 DEPARTMENT OF CSE — CSE-303 DATABASE SYSTEMS
 Date: 18 October 2026
 
-Assignment 2 (ER Modelling) for Semester 5 Section B must be submitted through
-the course portal by 5 November 2026. Late submissions will not be accepted.
+Assignment 2 (ER Modelling) for Semester 5 Section B.
+Submission deadline: 5 November 2026, through the course portal.
+Late submissions will not be accepted.

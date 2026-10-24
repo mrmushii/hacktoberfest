@@ -37,17 +37,24 @@ const normCode = (v: string | null) => (v ? v.toUpperCase().replace(/[\s_]+/g, "
 /** Canonical form used for both matching and diffing, so the model's spelling doesn't create fake changes. */
 export function normalize(f: NoticeFields): NoticeFields {
   const uncertain = new Set(f.uncertain);
-  const date = normDate(f.date);
+  const publishedOn = normDate(f.publishedOn);
+  let date = normDate(f.date);
+  // Small models often copy the issue date into the event date.
+  if (date && date === publishedOn) {
+    date = null;
+    uncertain.add("date");
+  }
   const deadline = normDate(f.deadline);
   if (f.date && !date) uncertain.add("date");
   if (f.deadline && !deadline) uncertain.add("deadline");
   return {
     ...f,
     title: f.title.trim(),
+    publishedOn,
     department: f.department.trim().toUpperCase(),
     courseCode: normCode(f.courseCode),
     eventName: f.eventName.trim(),
-    sections: [...new Set(f.sections.map((s) => s.trim().toUpperCase()).filter(Boolean))].sort(),
+    sections: [...new Set(f.sections.map((s) => s.trim().toUpperCase().replace(/^SECTION\s*/, "")).filter((s) => /^[A-Z]{1,2}$/.test(s)))].sort(),
     date,
     deadline,
     time: normTime(f.time),
@@ -57,4 +64,38 @@ export function normalize(f: NoticeFields): NoticeFields {
   };
 }
 
-export const eventKey = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, "");
+/** Canonical event identity from the model's eventName + title, so "Midterm Exam" and "Midterm Examination" match. */
+export function eventKey(f: Pick<NoticeFields, "eventName" | "title">): string {
+  for (const s of [f.eventName, f.title].map((x) => x.toLowerCase())) {
+    if (/\bmid(-|\s)?term|\bmid\b/.test(s)) return "midterm";
+    if (/\bfinal\b/.test(s)) return "final";
+    const m = s.match(/\b(quiz|assignment|lab|class test|ct|project|presentation)\s*(?:no\.?\s*)?(\d+)?/);
+    if (m) return `${m[1].replace("class test", "ct")}-${m[2] ?? ""}`;
+  }
+  return f.eventName.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+const DATE_PATTERNS = [
+  /\b\d{4}-\d{1,2}-\d{1,2}\b/g,
+  /\b\d{1,2}[/.-]\d{1,2}[/.-]\d{4}\b/g,
+  /\b\d{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]{3,}\.?,?\s+\d{4}\b/g,
+  /\b[A-Za-z]{3,}\.?\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4}\b/g,
+];
+
+/** Every date literally written in the source, canonicalized. */
+export function datesInText(text: string): Set<string> {
+  const out = new Set<string>();
+  for (const re of DATE_PATTERNS) for (const m of text.match(re) ?? []) {
+    const d = normDate(m);
+    if (d) out.add(d);
+  }
+  return out;
+}
+
+/** Flag dates the model produced that are not written anywhere in the source — catches misreads. */
+export function verifyDates(f: NoticeFields, sourceText: string): NoticeFields {
+  const found = datesInText(sourceText);
+  if (found.size === 0) return f; // image input: nothing to check against
+  const bad = (["date", "deadline", "publishedOn"] as const).filter((k) => f[k] && !found.has(f[k]!));
+  return bad.length ? { ...f, uncertain: [...new Set([...f.uncertain, ...bad])] } : f;
+}

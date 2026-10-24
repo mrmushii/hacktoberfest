@@ -103,7 +103,7 @@ export async function publishNotice(input: PublishInput) {
 
     // Drop planner tasks for students no longer in the audience.
     await tx.task.deleteMany({ where: { noticeId, userId: { notIn: users.map((u) => u.id) } } });
-    const due = f.date ?? f.deadline;
+    const due = f.deadline ?? f.date;
     for (const u of users) {
       if (f.cancelled || !due) {
         await tx.task.deleteMany({ where: { userId: u.id, noticeId } });

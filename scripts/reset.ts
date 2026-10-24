@@ -7,7 +7,10 @@ import { join } from "node:path";
 import { db } from "@/lib/db";
 import { ingestDocument, type DocKind } from "@/lib/docs/ingest";
 import type { Upload } from "@/lib/docs/pdf";
+import { topicFrequency, type Topic } from "@/lib/exam/analysis";
+import { practiceFor } from "@/lib/exam/practice";
 import { analyzeNotice, publishNotice } from "@/lib/notices/service";
+import { quiz, summarize } from "@/lib/study";
 
 const prewarm = process.argv.includes("--prewarm");
 const SAMPLES = join(process.cwd(), "samples");
@@ -73,6 +76,18 @@ async function main() {
   }
 
   if (prewarm) {
+    console.log("Pre-warming study tools and practice questions…");
+    for (const course of await db.course.findMany({ include: { documents: { include: { questions: true } } } })) {
+      const papers = course.documents.filter((d) => d.kind === "paper");
+      for (const d of course.documents.filter((d) => d.kind === "lecture")) {
+        const pages = JSON.parse(d.pages) as string[];
+        await timed(`${d.name} summary`, () => summarize(pages));
+        await timed(`${d.name} quiz`, () => quiz(pages));
+      }
+      for (const s of topicFrequency(JSON.parse(course.topics) as Topic[], papers).filter((s) => s.papers > 0)) {
+        await timed(`practice: ${s.topic}`, () => practiceFor(course.id, s.topic));
+      }
+    }
     console.log("Pre-warming revised notices (not published)…");
     for (const f of (await readdir(join(SAMPLES, "revised"))).sort()) {
       await timed(f, async () => analyzeNotice(await load(join(SAMPLES, "revised", f))));

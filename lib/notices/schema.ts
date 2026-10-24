@@ -4,13 +4,14 @@ export const EVENT_TYPES = ["exam", "class", "assignment", "registration", "even
 
 export const NoticeFields = z.object({
   title: z.string(),
+  publishedOn: z.string().nullable().describe("YYYY-MM-DD date the notice itself was issued"),
   department: z.string().describe("Short code like CSE, EEE"),
   courseCode: z.string().nullable().describe("e.g. CSE-301, null if none"),
   eventType: z.enum(EVENT_TYPES),
-  eventName: z.string().describe("Specific event, e.g. Midterm, Final, Quiz 2, Lab 3"),
+  eventName: z.string().describe("Which event, e.g. Midterm, Final, Quiz 2, Assignment 2 — not the course name"),
   semester: z.number().int().nullable(),
-  sections: z.array(z.string()).describe("Target sections like A, B; empty means all"),
-  date: z.string().nullable().describe("YYYY-MM-DD"),
+  sections: z.array(z.string()).describe("Section letters like A, B; [] when all sections"),
+  date: z.string().nullable().describe("YYYY-MM-DD the exam/class/event takes place; not the notice issue date"),
   time: z.string().nullable().describe("24h HH:MM start time"),
   room: z.string().nullable(),
   deadline: z.string().nullable().describe("YYYY-MM-DD for submission/registration deadlines"),
@@ -21,9 +22,8 @@ export const NoticeFields = z.object({
 });
 export type NoticeFields = z.infer<typeof NoticeFields>;
 
-/** Fields compared between versions, with display labels. */
+/** Factual fields compared between versions. Title and actions are free prose the model rewords, so they are shown, not diffed. */
 export const COMPARED: [keyof NoticeFields, string][] = [
-  ["title", "Title"],
   ["date", "Date"],
   ["time", "Time"],
   ["room", "Room"],
@@ -31,5 +31,4 @@ export const COMPARED: [keyof NoticeFields, string][] = [
   ["sections", "Sections"],
   ["semester", "Semester"],
   ["cancelled", "Cancelled"],
-  ["actions", "Required actions"],
 ];

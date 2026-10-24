@@ -19,11 +19,11 @@ const Question = z.object({ number: z.string(), text: z.string(), marks: z.numbe
 
 export async function extractQuestions(pages: string[]) {
   return generate({
-    task: "exam.questions@1",
+    task: "exam.questions@2",
     tier: "fast",
     schema: z.object({ questions: z.array(Question) }),
     system:
-      "You split an exam paper into individual questions and sub-questions (e.g. 1a, 1b). Copy question text verbatim. marks = the marks shown or null. page = the [page N] the question appears on. Skip instructions and headers.",
+      "You split an exam paper into sub-questions. Every lettered part is its own entry: question 1 with parts (a) and (b) gives two entries numbered \"1a\" and \"1b\". Copy each part's text verbatim. marks = the marks in [brackets] for that part, or null. page = the [page N] it appears on. Skip instructions and headers.",
     prompt: pagesForPrompt(pages),
   });
 }

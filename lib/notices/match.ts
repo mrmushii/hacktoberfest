@@ -18,7 +18,7 @@ export function matchNotice(f: NoticeFields, candidates: Candidate[]): Match {
         c.department === f.department &&
         c.courseCode === f.courseCode &&
         c.eventType === f.eventType &&
-        eventKey(c.fields.eventName) === eventKey(f.eventName),
+        eventKey(c.fields) === eventKey(f),
     )
     .sort((a, b) => +b.updatedAt - +a.updatedAt);
   if (hits.length === 0) return { kind: "new" };
