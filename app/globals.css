@@ -1,26 +1,59 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #f7f7f5;
+  --panel: #ffffff;
+  --subtle: #efefec;
+  --line: #e3e2de;
+  --ink: #1c1c1a;
+  --muted: #6b6a65;
+  --accent: #2f5bd3;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #121211;
+    --panel: #1b1b1a;
+    --subtle: #262624;
+    --line: #2f2f2c;
+    --ink: #ecebe7;
+    --muted: #9a9993;
+    --accent: #7b9cf0;
+  }
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-bg: var(--bg);
+  --color-panel: var(--panel);
+  --color-subtle: var(--subtle);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+body {
+  background: var(--bg);
+  color: var(--ink);
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-3.5 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50 dark:text-black;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-line px-3.5 py-2 text-sm font-medium hover:bg-subtle disabled:opacity-50;
+  }
+  .input {
+    @apply w-full rounded-lg border border-line bg-panel px-3 py-2 text-sm outline-none focus:border-accent;
+  }
+  .label {
+    @apply mb-1 block text-xs font-medium text-muted;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@media print {
+  .no-print { display: none !important; }
+  body { background: white; }
 }
