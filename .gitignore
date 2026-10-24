@@ -51,3 +51,4 @@ next-env.d.ts
 
 /public/tesseract
 .env.online
+.superpowers/

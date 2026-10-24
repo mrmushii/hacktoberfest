@@ -15,6 +15,7 @@
     "demos": "tsx scripts/record-demos.ts"
   },
   "dependencies": {
+    "@excalidraw/excalidraw": "^0.18.0",
     "@prisma/client": "^6.16.2",
     "@tesseract.js-data/ben": "^1.0.0",
     "@tesseract.js-data/eng": "^1.0.0",
