@@ -19,6 +19,7 @@
     "@prisma/client": "^6.16.2",
     "@tesseract.js-data/ben": "^1.0.0",
     "@tesseract.js-data/eng": "^1.0.0",
+    "@vapi-ai/web": "^3.0.1",
     "lucide-react": "^0.544.0",
     "next": "15.5.4",
     "next-auth": "^5.0.0-beta.29",

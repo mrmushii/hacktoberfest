@@ -12,6 +12,8 @@ import { topicFrequency, type Topic } from "@/lib/exam/analysis";
 import { practiceFor } from "@/lib/exam/practice";
 import { analyzeNotice, publishNotice } from "@/lib/notices/service";
 import { quiz, summarize } from "@/lib/study";
+import { buildLesson } from "@/lib/tutor/lesson";
+import { DEMO_TEXT } from "@/lib/tutor/demo";
 
 const prewarm = process.argv.includes("--prewarm");
 const SAMPLES = join(process.cwd(), "samples");
@@ -96,6 +98,7 @@ async function main() {
         await timed(`practice: ${s.topic}`, () => practiceFor(course.id, s.topic));
       }
     }
+    await timed("tutor demo lesson", () => buildLesson(DEMO_TEXT, "en"));
     console.log("Pre-warming revised notices (not published)…");
     for (const f of (await readdir(join(SAMPLES, "revised"))).sort()) {
       await timed(f, async () => analyzeNotice(await load(join(SAMPLES, "revised", f))));
