@@ -2,7 +2,7 @@ import { z } from "zod/v4";
 import { generate } from "@/lib/ai/client";
 import { pagesForPrompt, rankPages } from "@/lib/docs/chunk";
 
-const GROUNDED = "Use only the provided material. Cite the [page N] each point comes from. If the material does not cover something, say so.";
+export const GROUNDED = "Use only the provided material. Cite the [page N] each point comes from. If the material does not cover something, say so.";
 
 export function summarize(pages: string[]) {
   return generate({

@@ -12,6 +12,7 @@ import { topicFrequency, type Topic } from "@/lib/exam/analysis";
 import { practiceFor } from "@/lib/exam/practice";
 import { analyzeNotice, publishNotice } from "@/lib/notices/service";
 import { quiz, summarize } from "@/lib/study";
+import { mockExam, suggestGoals } from "@/lib/buddy/ai";
 import { buildLesson } from "@/lib/tutor/lesson";
 import { DEMO_TEXT } from "@/lib/tutor/demo";
 
@@ -97,6 +98,11 @@ async function main() {
       for (const s of topicFrequency(JSON.parse(course.topics) as Topic[], papers).filter((s) => s.papers > 0)) {
         await timed(`practice: ${s.topic}`, () => practiceFor(course.id, s.topic));
       }
+    }
+    const ayesha = await db.user.findUniqueOrThrow({ where: { email: `ayesha@${DEMO_DOMAIN}` } });
+    for (const c of await db.course.findMany({ where: { department: "CSE", documents: { some: { kind: "lecture" } } } })) {
+      await timed(`buddy goals ${c.code}`, () => suggestGoals(ayesha.id, c.id));
+      await timed(`buddy mock exam ${c.code}`, () => mockExam(ayesha.id, c.id));
     }
     await timed("tutor demo lesson", () => buildLesson(DEMO_TEXT, "en"));
     console.log("Pre-warming revised notices (not published)…");

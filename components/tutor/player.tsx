@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Mic, MicOff, Pause, Play, RotateCcw, SkipBack, SkipForward } from "lucide-react";
+import { Quiz } from "@/components/quiz";
 import { Card } from "@/components/ui";
 import type { Lesson } from "@/lib/tutor/lesson";
 import { speak, startVoice, stopVoice, voiceConfigured, voiceLive } from "@/lib/tutor/voice";
@@ -11,7 +12,6 @@ export function Player({ lesson, lang }: { lesson: Lesson; lang: "en" | "bn" }) 
   const [i, setI] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [voice, setVoice] = useState(false);
-  const [picked, setPicked] = useState<Record<number, number>>({});
   const run = useRef(0); // bumps on every pause/seek so a stale speak() never advances
   const step = lesson.steps[i];
   const finished = i === lesson.steps.length - 1 && !playing;
@@ -68,25 +68,7 @@ export function Player({ lesson, lang }: { lesson: Lesson; lang: "en" | "bn" }) 
         {finished && lesson.quiz.length > 0 && (
           <Card>
             <h3 className="mb-3 font-semibold">Quick check</h3>
-            <ol className="list-decimal space-y-4 pl-5 text-sm">
-              {lesson.quiz.map((q, n) => (
-                <li key={n}>
-                  <p className="font-medium">{q.question}</p>
-                  <div className="mt-2 grid gap-1.5">
-                    {q.options.map((o, j) => {
-                      const chosen = picked[n];
-                      const tone = chosen === undefined ? "" : j === q.answer ? "border-emerald-500 bg-emerald-500/10" : j === chosen ? "border-red-500 bg-red-500/10" : "";
-                      return (
-                        <button key={j} disabled={chosen !== undefined} onClick={() => setPicked({ ...picked, [n]: j })} className={`rounded-lg border border-line px-3 py-1.5 text-left ${tone}`}>
-                          {o}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {picked[n] !== undefined && <p className="mt-2 text-xs text-muted">{q.explanation}</p>}
-                </li>
-              ))}
-            </ol>
+            <Quiz questions={lesson.quiz} />
           </Card>
         )}
       </div>

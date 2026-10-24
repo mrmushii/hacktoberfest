@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Elapsed } from "@/components/client";
+import { Quiz } from "@/components/quiz";
 import { AiBadge, Card } from "@/components/ui";
 
 type Doc = { id: string; label: string; pages: string[] };
@@ -18,14 +19,12 @@ export function StudyTool({ docs }: { docs: Doc[] }) {
   const [out, setOut] = useState<Out | null>(null);
   const [err, setErr] = useState("");
   const [page, setPage] = useState<number | null>(null);
-  const [picked, setPicked] = useState<Record<number, number>>({});
   const doc = docs.find((d) => d.id === docId)!;
 
   async function run(action: Out["action"], question?: string) {
     setBusy(true);
     setErr("");
     setOut(null);
-    setPicked({});
     const r = await fetch("/api/study", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ documentId: docId, action, question }) });
     const body = await r.json();
     setBusy(false);
@@ -97,30 +96,7 @@ export function StudyTool({ docs }: { docs: Doc[] }) {
               </div>
             )}
             {out.action === "quiz" && (
-              <ol className="list-decimal space-y-4 pl-5 text-sm">
-                {out.data.questions.map((q, i) => (
-                  <li key={i}>
-                    <p className="font-medium">{q.question}</p>
-                    <div className="mt-2 grid gap-1.5">
-                      {q.options.map((o, j) => {
-                        const chosen = picked[i];
-                        const tone = chosen === undefined ? "" : j === q.answer ? "border-emerald-500 bg-emerald-500/10" : j === chosen ? "border-red-500 bg-red-500/10" : "";
-                        return (
-                          <button key={j} disabled={chosen !== undefined} onClick={() => setPicked({ ...picked, [i]: j })} className={`rounded-lg border border-line px-3 py-1.5 text-left ${tone}`}>
-                            {o}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {picked[i] !== undefined && (
-                      <p className="mt-2 text-xs text-muted">
-                        {q.explanation}
-                        {cite(q.page)}
-                      </p>
-                    )}
-                  </li>
-                ))}
-              </ol>
+              <Quiz questions={out.data.questions} after={(q) => cite(q.page)} />
             )}
           </Card>
         )}

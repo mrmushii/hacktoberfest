@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { ArrowUpRight, BookOpen, CalendarDays, FileText, GitFork, Megaphone, Network, PenLine, Play, Presentation, X, type LucideIcon } from "lucide-react";
+import { ArrowUpRight, BookOpen, CalendarDays, FileText, GitFork, Megaphone, Network, PenLine, Play, Presentation, Users, X, type LucideIcon } from "lucide-react";
 import type { Tool } from "@/lib/tools";
 
 export const TOOL_ICONS: Record<string, LucideIcon> = {
@@ -14,6 +14,7 @@ export const TOOL_ICONS: Record<string, LucideIcon> = {
   assignment: PenLine,
   slides: Presentation,
   tutor: GitFork,
+  buddy: Users,
 };
 
 /** What a tool is for, how it works, and its recorded demo. Driven entirely by the Tool entry. */
