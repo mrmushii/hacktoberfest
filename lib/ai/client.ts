@@ -88,7 +88,7 @@ export async function generate<S extends z.ZodType>(req: Generate<S>): Promise<A
         return { data: parsed.data, cached: false, durationMs, model, provider: p.name };
       }
     } catch (e) {
-      failures.push(`${p.name}: ${e instanceof RateLimited ? "rate limited" : (e as Error).message}`);
+      failures.push(`${p.name}: ${(e as Error).message}`);
     }
   }
   throw new AiError(`AI unavailable — ${failures.join("; ").slice(0, 400)}`);

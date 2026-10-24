@@ -76,13 +76,13 @@ body {
 
 @layer components {
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-3.5 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50 dark:text-black;
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-bg transition hover:opacity-85 disabled:opacity-50;
   }
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-line px-3.5 py-2 text-sm font-medium hover:bg-subtle disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-line px-5 py-2.5 text-sm font-medium transition hover:bg-subtle disabled:opacity-50;
   }
   .input {
-    @apply w-full rounded-lg border border-line bg-panel px-3 py-2 text-sm outline-none focus:border-accent;
+    @apply w-full rounded-xl border border-line bg-panel px-3.5 py-2.5 text-sm outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/10;
   }
   .chip {
     @apply inline-flex cursor-pointer items-center justify-center rounded-lg border border-line px-3 py-2 text-sm transition select-none hover:border-accent;
@@ -93,6 +93,76 @@ body {
   .label {
     @apply mb-1 block text-xs font-medium text-muted;
   }
+}
+
+/* soft brand glow behind the top of the page and large tiles */
+.glow {
+  background: radial-gradient(60% 100% at 20% 0%, color-mix(in oklab, var(--accent) 18%, transparent), transparent 70%),
+    radial-gradient(40% 80% at 85% 0%, color-mix(in oklab, #a855f7 12%, transparent), transparent 70%);
+}
+.tile-glow::before {
+  content: "";
+  position: absolute;
+  inset: 30% 0 0 0;
+  border-radius: inherit;
+  z-index: -1;
+  background: radial-gradient(70% 100% at 50% 100%, color-mix(in oklab, var(--accent) 14%, transparent), transparent);
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+.tile-glow { isolation: isolate; }
+.tile-glow:hover::before { opacity: 1; }
+
+/* home tiles: the hovered/focused one comes forward, the rest recede */
+.tile {
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.35s, box-shadow 0.35s, border-color 0.35s;
+}
+.tile-face, .tile-more, .tile-more li {
+  transition: opacity 0.3s, transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.tile-more, .tile-more li { opacity: 0; transform: translateY(8px); }
+.tile-more button { pointer-events: none; } /* only clickable once revealed */
+.tile:focus-within .tile-more button { pointer-events: auto; }
+.tile:focus-within {
+  z-index: 10;
+  border-color: color-mix(in oklab, var(--accent) 50%, var(--line));
+  box-shadow: 0 24px 48px -16px color-mix(in oklab, var(--accent) 25%, transparent);
+}
+.tile:focus-within .tile-face { opacity: 0; transform: translateY(-8px); }
+.tile:focus-within .tile-more, .tile:focus-within .tile-more li { opacity: 1; transform: none; }
+@media (hover: hover) {
+  .tile:hover {
+    z-index: 10;
+    transform: scale(1.03);
+    border-color: color-mix(in oklab, var(--accent) 50%, var(--line));
+    box-shadow: 0 24px 48px -16px color-mix(in oklab, var(--accent) 25%, transparent);
+  }
+  .tile:hover .tile-face { opacity: 0; transform: translateY(-8px); }
+  .tile:hover .tile-more, .tile:hover .tile-more li { opacity: 1; transform: none; }
+  .tile:hover .tile-more button { pointer-events: auto; }
+  .tiles:has(.tile:hover) .tile:not(:hover) { opacity: 0.6; transform: scale(0.98); }
+}
+
+/* preview dialog: fade + scale in and out */
+dialog.preview {
+  opacity: 0;
+  transform: scale(0.96);
+  transition: opacity 0.25s, transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), overlay 0.3s allow-discrete, display 0.3s allow-discrete;
+}
+dialog.preview[open] { opacity: 1; transform: none; }
+dialog.preview::backdrop {
+  background: rgb(0 0 0 / 0);
+  backdrop-filter: blur(0);
+  transition: background 0.3s, backdrop-filter 0.3s, overlay 0.3s allow-discrete, display 0.3s allow-discrete;
+}
+dialog.preview[open]::backdrop { background: rgb(0 0 0 / 0.4); backdrop-filter: blur(6px); }
+@starting-style {
+  dialog.preview[open] { opacity: 0; transform: scale(0.96); }
+  dialog.preview[open]::backdrop { background: rgb(0 0 0 / 0); backdrop-filter: blur(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile, .tile:hover, .tiles:has(.tile:hover) .tile:not(:hover), .tile-face, .tile-more, .tile-more li, dialog.preview { transform: none !important; }
 }
 
 @media print {

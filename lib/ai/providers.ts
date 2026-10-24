@@ -1,15 +1,16 @@
 import type { Tier } from "./client";
 
+/** 429, or a transient 500/503: worth one short retry, then the next provider. */
 export class RateLimited extends Error {
-  constructor(public retryAfterMs: number) {
-    super("rate limited");
+  constructor(public retryAfterMs: number, public status = 429) {
+    super(status === 429 ? "rate limited" : `temporarily unavailable (${status})`);
   }
 }
 
 export type CallInput = { system: string; prompt: string; images?: Uint8Array[]; jsonSchema: object; timeoutMs: number };
 
 export type Provider = {
-  name: "ollama" | "groq" | "gemini";
+  name: "ollama" | "groq" | "openrouter" | "huggingface" | "cerebras" | "gemini";
   model: (tier: Tier) => string;
   configured: boolean;
   supportsImages: boolean;
@@ -28,9 +29,9 @@ async function post(url: string, headers: Record<string, string>, body: unknown,
   } catch (e) {
     throw new Error(`${who} unreachable: ${(e as Error).message}`);
   }
-  if (res.status === 429) {
+  if (res.status === 429 || res.status === 500 || res.status === 503) {
     const after = Number(res.headers.get("retry-after"));
-    throw new RateLimited(Number.isFinite(after) && after > 0 ? after * 1000 : 3000);
+    throw new RateLimited(Number.isFinite(after) && after > 0 ? after * 1000 : 3000, res.status);
   }
   const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
   if (!res.ok) throw new Error(`${who} error ${res.status}: ${JSON.stringify(json.error ?? json).slice(0, 200)}`);
@@ -81,36 +82,101 @@ const ollama: Provider = {
   },
 };
 
-const groq: Provider = {
-  name: "groq",
-  model: (t) => (t === "fast" ? env("GROQ_MODEL_FAST", "openai/gpt-oss-20b") : env("GROQ_MODEL_SMART", "openai/gpt-oss-120b")),
-  configured: !!process.env.GROQ_API_KEY,
-  supportsImages: false,
-  concurrency: 2,
-  minIntervalMs: rpm("GROQ_RPM", 30),
-  async call(model, { system, prompt, jsonSchema, timeoutMs }) {
-    const body = await post(
-      "https://api.groq.com/openai/v1/chat/completions",
-      { authorization: `Bearer ${process.env.GROQ_API_KEY}` },
-      {
-        model,
-        temperature: 0,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: withSchema(system, jsonSchema) },
-          { role: "user", content: prompt },
-        ],
-      },
-      timeoutMs,
-      "Groq",
-    );
-    return extractJson((body.choices as { message: { content: string } }[])?.[0]?.message?.content ?? "");
-  },
+type OpenAICompat = {
+  name: Provider["name"];
+  label: string;
+  url: string;
+  keyEnv: string;
+  prefix: string; // env prefix for MODEL_FAST / MODEL_SMART / RPM
+  fast: string;
+  smart: string;
+  rpm: number;
+  jsonMode: boolean; // send response_format json_object (not every routed model accepts it)
+  headers?: Record<string, string>;
 };
+
+/** Groq, OpenRouter, Hugging Face and Cerebras all speak the OpenAI chat-completions API. */
+function openAICompatible(c: OpenAICompat): Provider {
+  return {
+    name: c.name,
+    model: (t) => (t === "fast" ? env(`${c.prefix}_MODEL_FAST`, c.fast) : env(`${c.prefix}_MODEL_SMART`, c.smart)),
+    configured: !!process.env[c.keyEnv],
+    supportsImages: false,
+    concurrency: 2,
+    minIntervalMs: rpm(`${c.prefix}_RPM`, c.rpm),
+    async call(model, { system, prompt, jsonSchema, timeoutMs }) {
+      const body = await post(
+        c.url,
+        { authorization: `Bearer ${process.env[c.keyEnv]}`, ...c.headers },
+        {
+          model,
+          temperature: 0,
+          ...(c.jsonMode && { response_format: { type: "json_object" } }),
+          messages: [
+            { role: "system", content: withSchema(system, jsonSchema) },
+            { role: "user", content: prompt },
+          ],
+        },
+        timeoutMs,
+        c.label,
+      );
+      return extractJson((body.choices as { message: { content: string } }[])?.[0]?.message?.content ?? "");
+    },
+  };
+}
+
+const groq = openAICompatible({
+  name: "groq",
+  label: "Groq",
+  url: "https://api.groq.com/openai/v1/chat/completions",
+  keyEnv: "GROQ_API_KEY",
+  prefix: "GROQ",
+  fast: "openai/gpt-oss-20b",
+  smart: "openai/gpt-oss-120b",
+  rpm: 30,
+  jsonMode: true,
+});
+
+const openrouter = openAICompatible({
+  name: "openrouter",
+  label: "OpenRouter",
+  url: "https://openrouter.ai/api/v1/chat/completions",
+  keyEnv: "OPENROUTER_API_KEY",
+  prefix: "OPENROUTER",
+  fast: "google/gemma-4-26b-a4b-it:free",
+  smart: "google/gemma-4-31b-it:free",
+  rpm: 20,
+  jsonMode: false,
+  headers: { "X-Title": "UniHub AI" },
+});
+
+const huggingface = openAICompatible({
+  name: "huggingface",
+  label: "Hugging Face",
+  url: "https://router.huggingface.co/v1/chat/completions",
+  keyEnv: "HF_TOKEN",
+  prefix: "HF",
+  fast: "openai/gpt-oss-20b",
+  smart: "Qwen/Qwen3-235B-A22B-Instruct-2507",
+  rpm: 30,
+  jsonMode: false,
+});
+
+const cerebras = openAICompatible({
+  name: "cerebras",
+  label: "Cerebras",
+  url: "https://api.cerebras.ai/v1/chat/completions",
+  keyEnv: "CEREBRAS_API_KEY",
+  prefix: "CEREBRAS",
+  fast: "qwen-3.8-27b",
+  smart: "gpt-oss-120b",
+  rpm: 30,
+  jsonMode: true,
+});
 
 const gemini: Provider = {
   name: "gemini",
-  model: (t) => (t === "fast" ? env("GEMINI_MODEL_FAST", "gemma-3-12b-it") : env("GEMINI_MODEL_SMART", "gemma-3-27b-it")),
+  model: (t) => (t === "fast" ? env("GEMINI_MODEL_FAST", "gemma-4-26b-a4b-it") : env("GEMINI_MODEL_SMART", "gemma-4-31b-it")),
   configured: !!process.env.GEMINI_API_KEY,
   supportsImages: false,
   concurrency: 1,
@@ -124,14 +190,15 @@ const gemini: Provider = {
       timeoutMs,
       "Gemini API",
     );
-    const parts = (body.candidates as { content?: { parts?: { text?: string }[] } }[])?.[0]?.content?.parts ?? [];
-    return extractJson(parts.map((p) => p.text ?? "").join(""));
+    // Gemma 4 returns its reasoning as separate parts flagged `thought`; keep only the answer.
+    const parts = (body.candidates as { content?: { parts?: { text?: string; thought?: boolean }[] } }[])?.[0]?.content?.parts ?? [];
+    return extractJson(parts.filter((p) => !p.thought).map((p) => p.text ?? "").join(""));
   },
 };
 
-const ALL = { ollama, groq, gemini };
+const ALL = { ollama, groq, openrouter, huggingface, cerebras, gemini };
 
-/** Provider chain from AI_PROVIDERS, e.g. "ollama" (offline) or "groq,gemini" (online). */
+/** Provider chain from AI_PROVIDERS, e.g. "ollama" (offline) or "groq,cerebras,openrouter,huggingface,gemini" (online). */
 export function providerChain(): Provider[] {
   return env("AI_PROVIDERS", "ollama")
     .split(",")

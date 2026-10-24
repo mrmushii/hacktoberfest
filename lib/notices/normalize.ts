@@ -32,6 +32,13 @@ export function normTime(v: string | null): string | null {
   return `${String(h).padStart(2, "0")}:${m[2] ?? "00"}`;
 }
 
+/** Room identifier only: "Room 501, Academic Building 2" and "501" are the same room. */
+export function normRoom(v: string | null): string | null {
+  if (!v) return null;
+  const head = v.split(/[,;(]/)[0].trim().replace(/^(room|rm\.?)\s*(no\.?)?\s*/i, "").toUpperCase();
+  return head || null;
+}
+
 const normCode = (v: string | null) => (v ? v.toUpperCase().replace(/[\s_]+/g, "-").replace(/^([A-Z]+)(\d)/, "$1-$2") : null);
 
 /** Canonical form used for both matching and diffing, so the model's spelling doesn't create fake changes. */
@@ -47,8 +54,12 @@ export function normalize(f: NoticeFields): NoticeFields {
   const deadline = normDate(f.deadline);
   if (f.date && !date) uncertain.add("date");
   if (f.deadline && !deadline) uncertain.add("deadline");
+  // Models disagree on whether a quiz is an "exam" or "other"; derive the type from the event itself.
+  const key = eventKey(f);
+  const eventType = /^(midterm|final|quiz-|ct-)/.test(key) ? "exam" : /^(assignment|lab|project)-/.test(key) ? "assignment" : f.eventType;
   return {
     ...f,
+    eventType,
     title: f.title.trim(),
     publishedOn,
     department: f.department.trim().toUpperCase(),
@@ -58,7 +69,7 @@ export function normalize(f: NoticeFields): NoticeFields {
     date,
     deadline,
     time: normTime(f.time),
-    room: f.room ? f.room.trim().replace(/^room\s*/i, "").toUpperCase() : null,
+    room: normRoom(f.room),
     actions: f.actions.map((a) => a.trim()).filter(Boolean),
     uncertain: [...uncertain],
   };

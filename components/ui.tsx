@@ -2,14 +2,14 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 export const Card = ({ children, className = "" }: { children: ReactNode; className?: string }) => (
-  <div className={`rounded-xl border border-line bg-panel p-5 ${className}`}>{children}</div>
+  <div className={`rounded-3xl border border-line bg-panel p-6 ${className}`}>{children}</div>
 );
 
 export const PageTitle = ({ title, sub, action }: { title: string; sub?: string; action?: ReactNode }) => (
-  <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+  <div className="mb-8 flex flex-wrap items-end justify-between gap-3">
     <div>
-      <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-      {sub && <p className="mt-1 text-sm text-muted">{sub}</p>}
+      <h1 className="text-3xl font-semibold tracking-tighter sm:text-4xl">{title}</h1>
+      {sub && <p className="mt-2 text-sm text-muted">{sub}</p>}
     </div>
     {action}
   </div>
@@ -23,7 +23,7 @@ const tones = {
   red: "bg-red-500/10 text-red-700 dark:text-red-400",
 };
 export const Badge = ({ children, tone = "neutral" }: { children: ReactNode; tone?: keyof typeof tones }) => (
-  <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium ${tones[tone]}`}>{children}</span>
+  <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${tones[tone]}`}>{children}</span>
 );
 
 export const Button = ({ href, children, variant = "primary" }: { href: string; children: ReactNode; variant?: "primary" | "ghost" }) => (
@@ -33,7 +33,7 @@ export const Button = ({ href, children, variant = "primary" }: { href: string; 
 );
 
 export const Empty = ({ children }: { children: ReactNode }) => (
-  <div className="rounded-xl border border-dashed border-line p-8 text-center text-sm text-muted">{children}</div>
+  <div className="rounded-3xl border border-dashed border-line p-10 text-center text-sm text-muted">{children}</div>
 );
 
 export function AiBadge({ ai }: { ai: { cached: boolean; durationMs: number; model: string; provider?: string } }) {

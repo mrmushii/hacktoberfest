@@ -11,7 +11,8 @@
     "reset": "tsx scripts/reset.ts",
     "prewarm": "tsx scripts/reset.ts --prewarm",
     "db:push": "prisma db push",
-    "postinstall": "node scripts/copy-tesseract.mjs"
+    "postinstall": "node scripts/copy-tesseract.mjs",
+    "demos": "tsx scripts/record-demos.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.16.2",
@@ -35,6 +36,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.5.4",
+    "playwright": "^1.55.0",
     "tailwindcss": "^4",
     "tsx": "^4.20.5",
     "typescript": "^5",

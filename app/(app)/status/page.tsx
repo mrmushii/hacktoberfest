@@ -2,7 +2,14 @@ import { aiStatus } from "@/lib/ai/client";
 import { db } from "@/lib/db";
 import { Badge, Card, PageTitle } from "@/components/ui";
 
-const LABEL = { ollama: "Ollama (local / self-hosted)", groq: "Groq", gemini: "Gemini API (Gemma)" } as const;
+const LABEL = {
+  ollama: "Ollama (local / self-hosted)",
+  groq: "Groq",
+  openrouter: "OpenRouter",
+  huggingface: "Hugging Face Inference",
+  cerebras: "Cerebras",
+  gemini: "Gemini API (Gemma)",
+} as const;
 
 export default async function Status() {
   const [chain, cache] = await Promise.all([aiStatus(), db.aiCache.groupBy({ by: ["model", "task"], _count: true, _avg: { durationMs: true }, orderBy: { model: "asc" } })]);

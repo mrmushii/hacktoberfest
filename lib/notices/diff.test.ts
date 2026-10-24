@@ -21,6 +21,8 @@ describe("normalize", () => {
     expect(normDate("November 3, 2026")).toBe("2026-11-03");
     expect(normDate("03/11/2026")).toBe("2026-11-03");
     expect(normTime("2:30 pm")).toBe("14:30");
+    expect(normalize({ ...base, room: "501, Academic Building 2" }).room).toBe("501");
+    expect(normalize({ ...base, room: "Rm. 402 (2nd floor)" }).room).toBe("402");
   });
   it("drops an event date that is just the issue date", () => {
     const f = normalize({ ...base, publishedOn: "2026-10-18", date: "18 October 2026", deadline: "2026-11-05" });
@@ -68,6 +70,11 @@ describe("matchNotice", () => {
     expect(matchNotice({ ...base, eventName: "Midterm Examination" }, [cand("a", { eventName: "Data Structures Midterm" })])).toEqual(
       expect.objectContaining({ noticeId: "a" }),
     );
+  });
+  it("matches a quiz labelled 'other' by one model and 'exam' by another", () => {
+    const quiz = (t: "other" | "exam") => normalize({ ...base, eventType: t, eventName: "Quiz 2", title: "Quiz 2 of EEE-201" });
+    expect(quiz("other").eventType).toBe("exam");
+    expect(matchNotice(quiz("exam"), [cand("q", quiz("other"))])).toEqual(expect.objectContaining({ kind: "update", noticeId: "q" }));
   });
   it("keeps Quiz 1 and Quiz 2 apart", () => {
     expect(matchNotice({ ...base, eventType: "exam", eventName: "Quiz 2" }, [cand("q1", { eventName: "Quiz 1" })])).toEqual({ kind: "new" });

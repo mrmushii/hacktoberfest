@@ -30,7 +30,18 @@ On this 8 GB dev machine we use `qwen3.5:4b`. On a 16 GB+ machine or GPU server,
 ## AI providers
 All models are open-weight. `AI_PROVIDERS` picks the chain (see the two profiles in `.env.example`):
 - **Local / offline:** `AI_PROVIDERS=ollama` runs `qwen3.5:4b` (or Gemma on bigger machines) on this computer. No internet needed.
-- **Online judging:** `AI_PROVIDERS=groq,gemini` tries Groq (`gpt-oss`) first, then Gemma via the Gemini API. If both fail, the app shows a clear error, never a made-up result. API keys stay in the server-side `.env`; the browser never sees them.
+- **Online judging:** a comma-separated fallback chain, e.g. `AI_PROVIDERS=groq,cerebras,openrouter,huggingface,gemini`. Providers are tried in order, and ones without a key are skipped. If all of them fail, the app shows a clear error, never a made-up result. API keys stay in the server-side `.env`; the browser never sees them.
+
+| Provider | Key | Default fast / smart model (all open-weight) |
+|---|---|---|
+| `ollama` | none (local) | `qwen3.5:4b` |
+| `groq` | `GROQ_API_KEY` | `openai/gpt-oss-20b` / `openai/gpt-oss-120b` |
+| `cerebras` | `CEREBRAS_API_KEY` | `qwen-3.8-27b` / `gpt-oss-120b` |
+| `openrouter` | `OPENROUTER_API_KEY` | `google/gemma-4-26b-a4b-it:free` / `google/gemma-4-31b-it:free` |
+| `huggingface` | `HF_TOKEN` | `openai/gpt-oss-20b` / `Qwen/Qwen3-235B-A22B-Instruct-2507` |
+| `gemini` | `GEMINI_API_KEY` | `gemma-4-26b-a4b-it` / `gemma-4-31b-it` (slow: always reasons first) |
+
+Each model can be overridden with `<PREFIX>_MODEL_FAST` / `<PREFIX>_MODEL_SMART`, and each request budget with `<PREFIX>_RPM` (prefixes: `GROQ`, `CEREBRAS`, `OPENROUTER`, `HF`, `GEMINI`). Each provider's answers are cached separately, so after adding a provider, run `npm run prewarm` again.
 
 Rate-limit protection, all in [lib/ai/client.ts](lib/ai/client.ts) and [lib/ai/providers.ts](lib/ai/providers.ts):
 1. The cache is checked for every provider's model before any API call.
